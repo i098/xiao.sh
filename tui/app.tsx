@@ -1212,12 +1212,6 @@ function Home({ visit }: { visit: VisitInfo }) {
   return (
     <box style={{ flexDirection: "row", paddingLeft: 2, paddingTop: 2 }}>
       <box style={{ flexDirection: "column", width: 44 }}>
-        <text bg={PANEL}>
-          <strong fg={INK}>{profile.name}</strong>
-        </text>
-        <text bg={PANEL} fg={MUTED}>
-          CS @ Northeastern
-        </text>
         <LiveNow />
         <box style={{ height: 1 }} />
         <text bg={PANEL} fg={FAINT}>
