@@ -10,6 +10,9 @@ import type { VisitInfo } from "@/lib/visits";
 import { capture } from "@/lib/analytics";
 import { getSpotify, type SpotifyState } from "@/lib/spotify";
 import { autoName, deleteSession, listSessions, loadSession, saveSession, type SavedSession } from "@/lib/sessions";
+import { liveCount } from "@/lib/presence";
+import { getGitHub, type GitHubPulse } from "@/lib/github";
+import { recordQuestion, topQuestions } from "@/lib/questions";
 
 // Editorial palette: green ACCENT reserved for links/active/live; neutral INK/MUTED/FAINT for hierarchy.
 const ACCENT = "#43f08a";
@@ -23,16 +26,15 @@ const PANEL = "#070d0c";
 
 const LIST_W = 30;
 
-type Screen = "home" | "projects" | "about" | "chat" | "links";
+type Screen = "home" | "projects" | "about" | "chat";
 
 const NAV: { key: string; screen: Screen }[] = [
   { key: "h", screen: "home" },
   { key: "p", screen: "projects" },
   { key: "a", screen: "about" },
   { key: "c", screen: "chat" },
-  { key: "l", screen: "links" },
 ];
-const SCREENS: Screen[] = ["home", "projects", "about", "chat", "links"];
+const SCREENS: Screen[] = ["home", "projects", "about", "chat"];
 
 // grouped /help — rendered as a multi-line assistant message (hierarchy, not one line)
 const HELP_TEXT = [
@@ -44,7 +46,7 @@ const HELP_TEXT = [
   "  /delete [name]     delete a saved chat — no name opens a picker",
   "  /exit              back to home",
   "NAVIGATE",
-  "  /home /projects /about /chat /links   (or press h p a c l)",
+  "  /home /projects /about /chat   (or press h p a c)",
   "SCROLL",
   "  PageUp / PageDown   ·   ↑ / ↓ when the input is empty",
 ].join("\n");
@@ -178,6 +180,17 @@ function bootLinesFor(to: Screen): string[] {
   return [`$ cd ~/${to}`, `[ ok ] open ${to}`];
 }
 
+// shutdown log shown on quit before the connection closes
+const SHUTDOWN_LINES = [
+  "$ exit",
+  "[ ok ] flush analytics",
+  "[ ok ] stop ai-search daemon",
+  "[ ok ] release koi pond",
+  "[ ok ] unmount /home/jerry",
+  "connection closed.",
+  "goodbye — jerry xiao",
+];
+
 function BootLine({ line }: { line: string }) {
   if (line.startsWith("[ ok ]")) {
     return (
@@ -195,7 +208,8 @@ function BootLine({ line }: { line: string }) {
       </text>
     );
   }
-  if (line === "ready." || line.startsWith("welcome")) return <text fg={ACCENT}>{line}</text>;
+  if (line === "ready." || line.startsWith("welcome") || line.startsWith("goodbye"))
+    return <text fg={ACCENT}>{line}</text>;
   return <text fg={MUTED}>{line}</text>;
 }
 
@@ -254,6 +268,7 @@ export default function App({
   const [screen, setScreen] = useState<Screen>("home");
   const [booting, setBooting] = useState(true); // full-screen boot log on first mount
   const [transition, setTransition] = useState<Screen | null>(null);
+  const [quitting, setQuitting] = useState(false); // boot-down log before the connection closes
   const [selected, setSelected] = useState(0);
   const go = useCallback(
     (target: Screen) => {
@@ -274,7 +289,7 @@ export default function App({
   const navTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const chatActive = screen === "chat";
-  const quit = useCallback(() => onExit(), [onExit]);
+  const quit = useCallback(() => setQuitting(true), []);
 
   const loadInto = useCallback((msgs: ChatMessage[]) => {
     messagesRef.current = msgs;
@@ -366,6 +381,7 @@ export default function App({
         }
         return;
       }
+      recordQuestion(content);
       const next = [...messagesRef.current, { role: "user" as const, content }];
       messagesRef.current = next;
       setMessages(next);
@@ -458,6 +474,9 @@ export default function App({
     if (nav && nav.screen !== screen) go(nav.screen);
   });
 
+  if (quitting) {
+    return <BootScreen key="bye" lines={SHUTDOWN_LINES} onDone={onExit} />;
+  }
   if (booting) {
     return <BootScreen key="boot" lines={BOOT_LINES} onDone={() => setBooting(false)} />;
   }
@@ -495,7 +514,6 @@ export default function App({
           {screen === "home" && <Home visit={visit} />}
           {screen === "projects" && <Projects selected={selected} />}
           {screen === "about" && <About linkedIn={linkedIn} />}
-          {screen === "links" && <Links />}
           {screen === "chat" && (
             <Chat
               messages={messages}
@@ -994,6 +1012,68 @@ function fmtMs(ms: number) {
   const s = Math.floor(ms / 1000);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
+function compactNum(n: number) {
+  return n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : `${n}`;
+}
+function timeAgo(iso: string) {
+  const ms = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return "just now";
+  const m = Math.floor(ms / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
+
+// live concurrent sessions (ssh + web), polled from the in-process counter
+function LiveNow() {
+  const [n, setN] = useState(() => liveCount());
+  useEffect(() => {
+    const id = setInterval(() => setN(liveCount()), 2000);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <text bg={PANEL}>
+      <span fg={ACCENT}>{"◉ "}</span>
+      <span fg={INK}>{n}</span>
+      <span fg={MUTED}>{n === 1 ? " online — just you" : " online now"}</span>
+    </text>
+  );
+}
+
+// GitHub pulse: followers · repos · stars · last push
+function GitHubPulse() {
+  const [g, setG] = useState<GitHubPulse | null>(null);
+  useEffect(() => {
+    let alive = true;
+    getGitHub()
+      .then((d) => {
+        if (alive) setG(d);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  if (!g) return null;
+  return (
+    <box style={{ flexDirection: "column" }}>
+      <text bg={PANEL} fg={FAINT}>
+        GITHUB
+      </text>
+      <text bg={PANEL}>
+        <span fg={INK}>{compactNum(g.followers)}</span>
+        <span fg={MUTED}>{" followers · "}</span>
+        <span fg={INK}>{g.repos}</span>
+        <span fg={MUTED}>{" repos · "}</span>
+        <span fg={ACCENT}>{`${compactNum(g.stars)}★`}</span>
+        {g.lastPushAt ? <span fg={MUTED}>{`  · pushed ${timeAgo(g.lastPushAt)}`}</span> : null}
+      </text>
+    </box>
+  );
+}
 
 // daily-visits bar chart — multi-row, sub-cell block resolution, with a y-axis (max/0)
 const CHART_ROWS = 7;
@@ -1106,27 +1186,55 @@ function NowPlaying() {
   );
 }
 
+// most-asked chat questions (counts only)
+function TopAsked() {
+  const [asked] = useState(() => topQuestions(3));
+  if (asked.length === 0) return null;
+  return (
+    <box style={{ flexDirection: "column" }}>
+      <text bg={PANEL} fg={FAINT}>
+        ASKED
+      </text>
+      {asked.map((q, i) => (
+        <text key={i} bg={PANEL}>
+          <span fg={FAINT}>{"· "}</span>
+          <span fg={INK}>{truncate(q.text, 40)}</span>
+          <span fg={FAINT}>{`  ×${q.count}`}</span>
+        </text>
+      ))}
+    </box>
+  );
+}
+
 function Home({ visit }: { visit: VisitInfo }) {
   return (
-    <box style={{ flexDirection: "column", paddingLeft: 2, paddingTop: 2 }}>
-      <text bg={PANEL}>
-        <strong fg={INK}>{profile.name}</strong>
-      </text>
-      <text bg={PANEL} fg={MUTED}>
-        CS @ Northeastern
-      </text>
-      <box style={{ height: 1 }} />
-      <text bg={PANEL} fg={FAINT}>
-        VISITORS
-      </text>
-      <text bg={PANEL}>
-        <strong fg={ACCENT}>{`#${commas(visit.count)}`}</strong>
-        <span fg={MUTED}>{`  all-time · ${visit.daily[visit.daily.length - 1] ?? 0} today`}</span>
-      </text>
-      <box style={{ height: 1 }} />
-      <VisitorChart data={visit.daily} />
-      <box style={{ height: 1 }} />
-      <NowPlaying />
+    <box style={{ flexDirection: "row", paddingLeft: 2, paddingTop: 2 }}>
+      <box style={{ flexDirection: "column", width: 44 }}>
+        <text bg={PANEL}>
+          <strong fg={INK}>{profile.name}</strong>
+        </text>
+        <text bg={PANEL} fg={MUTED}>
+          CS @ Northeastern
+        </text>
+        <LiveNow />
+        <box style={{ height: 1 }} />
+        <text bg={PANEL} fg={FAINT}>
+          VISITORS
+        </text>
+        <text bg={PANEL}>
+          <strong fg={ACCENT}>{`#${commas(visit.count)}`}</strong>
+          <span fg={MUTED}>{`  all-time · ${visit.daily[visit.daily.length - 1] ?? 0} today`}</span>
+        </text>
+        <box style={{ height: 1 }} />
+        <VisitorChart data={visit.daily} />
+      </box>
+      <box style={{ flexDirection: "column", paddingLeft: 4 }}>
+        <GitHubPulse />
+        <box style={{ height: 1 }} />
+        <TopAsked />
+        <box style={{ height: 1 }} />
+        <NowPlaying />
+      </box>
     </box>
   );
 }
@@ -1263,7 +1371,6 @@ function About({ linkedIn }: { linkedIn: LinkedInSnapshot }) {
         <strong fg={INK}>{lp.name}</strong>
         {typeof lp.followerCount === "number" ? <span fg={MUTED}>{`   ${lp.followerCount} followers`}</span> : null}
       </text>
-      {lp.title && <text bg={PANEL} fg={MUTED}>{truncate(lp.title, 72)}</text>}
       <box style={{ height: 1 }} />
       <text bg={PANEL}>
         <span fg={MUTED}>education   </span>
@@ -1286,45 +1393,15 @@ function About({ linkedIn }: { linkedIn: LinkedInSnapshot }) {
       <LinkLine label="Email" href={`mailto:${profile.links.email}`} text={profile.links.email} bg={PANEL} />
       <box style={{ height: 1 }} />
       <text bg={PANEL} fg={FAINT}>STACK</text>
-      <text bg={PANEL}>
-        {MY_STACK.map((group, gi) => (
-          <span key={gi}>
-            {gi > 0 ? <span fg={FAINT}>{"·  "}</span> : null}
-            {group.map((t, ti) => {
-              const { tag, col } = techTag(t);
-              return (
-                <span key={ti} fg={col}>{`● ${tag}  `}</span>
-              );
-            })}
-          </span>
-        ))}
-      </text>
-      <box style={{ height: 1 }} />
-      <text bg={PANEL} fg={MUTED}>RECENT POSTS</text>
-      {linkedIn.posts.slice(0, 3).map((post) => (
-        <text key={post.url} bg={PANEL}>
-          <span fg={FAINT}>· </span>
-          <a href={post.url} fg={ACCENT} attributes={TextAttributes.UNDERLINE}>
-            {truncate(post.headline ?? post.url, 64)}
-          </a>
+      {MY_STACK.map((group, gi) => (
+        <text key={gi} bg={PANEL}>
+          {group.map((t, ti) => {
+            const { tag, col } = techTag(t);
+            return (
+              <span key={ti} fg={col}>{`● ${tag}  `}</span>
+            );
+          })}
         </text>
-      ))}
-    </box>
-  );
-}
-
-function Links() {
-  const rows: [string, string, string][] = [
-    ["Email", `mailto:${profile.links.email}`, profile.links.email],
-    ["GitHub", profile.links.github, profile.links.github],
-    ["LinkedIn", profile.links.linkedin, profile.links.linkedin],
-  ];
-  return (
-    <box style={{ flexDirection: "column", paddingLeft: 2, paddingTop: 2 }}>
-      <text fg={MUTED}>ELSEWHERE</text>
-      <box style={{ height: 1 }} />
-      {rows.map(([label, href, text]) => (
-        <LinkLine key={label} label={label} href={href} text={text} />
       ))}
     </box>
   );

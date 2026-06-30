@@ -4,6 +4,7 @@ import { createRoot } from "@opentui/react";
 import { getLinkedInSnapshot } from "@/lib/linkedin";
 import { recordVisit } from "@/lib/visits";
 import { capture } from "@/lib/analytics";
+import { join, leave } from "@/lib/presence";
 import App from "./app";
 
 export type SessionStreams = {
@@ -33,6 +34,17 @@ export async function startSession(
     useMouse: true,
     enableMouseMovement: true,
   });
+  // presence: count this live session; decrement once on whatever path tears the renderer down
+  join();
+  const origDestroy = renderer.destroy.bind(renderer);
+  let left = false;
+  (renderer as unknown as { destroy: () => void }).destroy = () => {
+    if (!left) {
+      left = true;
+      leave();
+    }
+    origDestroy();
+  };
   createRoot(renderer).render(
     <App linkedIn={linkedIn} visit={visit} distinctId={distinctId} onExit={onExit} />,
   );
