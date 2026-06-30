@@ -3,7 +3,7 @@
 // Reads SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET / SPOTIFY_REFRESH_TOKEN; no-op without them.
 const TOKEN_URL = "https://accounts.spotify.com/api/token";
 const NOW_URL = "https://api.spotify.com/v1/me/player/currently-playing";
-const RECENT_URL = "https://api.spotify.com/v1/me/player/recently-played?limit=5";
+const RECENT_URL = "https://api.spotify.com/v1/me/player/recently-played?limit=6";
 
 export type SpotifyTrack = {
   name: string;

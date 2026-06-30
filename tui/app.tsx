@@ -1030,32 +1030,34 @@ function timeAgo(iso: string) {
 // Consistent stat card used across the home dashboard: a MUTED uppercase label,
 // then content. One shared rhythm so every block lines up.
 const SEP = "  ·  ";
-function Stat({ label, children }: { label: string; children: ReactNode }) {
+function Stat({ label, meta, children }: { label: string; meta?: string; children: ReactNode }) {
   return (
     <box style={{ flexDirection: "column", marginBottom: 1 }}>
-      <text bg={PANEL} fg={MUTED}>
-        {label}
+      <text bg={PANEL}>
+        <span fg={MUTED}>{label}</span>
+        {meta ? <span fg={FAINT}>{`  ·  ${meta}`}</span> : null}
       </text>
       {children}
     </box>
   );
 }
 
-// live concurrent sessions (ssh + web), polled from the in-process counter
-function LiveNow() {
+// total visitors + live online (polled) on one row
+function VisitorHead({ total }: { total: number }) {
   const [n, setN] = useState(() => liveCount());
   useEffect(() => {
     const id = setInterval(() => setN(liveCount()), 2000);
     return () => clearInterval(id);
   }, []);
   return (
-    <Stat label="LIVE">
-      <text bg={PANEL}>
-        <span fg={ACCENT}>{"◉ "}</span>
-        <span fg={INK}>{n}</span>
-        <span fg={MUTED}>{" online"}</span>
-      </text>
-    </Stat>
+    <text bg={PANEL}>
+      <strong fg={ACCENT}>{`#${commas(total)}`}</strong>
+      <span fg={MUTED}>{" total"}</span>
+      <span fg={FAINT}>{SEP}</span>
+      <span fg={ACCENT}>{"◉ "}</span>
+      <span fg={INK}>{n}</span>
+      <span fg={MUTED}>{" online"}</span>
+    </text>
   );
 }
 
@@ -1074,20 +1076,17 @@ function GitHubPulse() {
     };
   }, []);
   return (
-    <Stat label="GITHUB">
+    <Stat label="GITHUB" meta={g?.lastPushAt ? `pushed ${timeAgo(g.lastPushAt)}` : undefined}>
       {g ? (
-        <box style={{ flexDirection: "column" }}>
-          <text bg={PANEL}>
-            <span fg={INK}>{compactNum(g.followers)}</span>
-            <span fg={MUTED}>{" followers"}</span>
-            <span fg={FAINT}>{SEP}</span>
-            <span fg={INK}>{g.repos}</span>
-            <span fg={MUTED}>{" repos"}</span>
-            <span fg={FAINT}>{SEP}</span>
-            <span fg={ACCENT}>{`${compactNum(g.stars)}★`}</span>
-          </text>
-          {g.lastPushAt ? <text bg={PANEL} fg={FAINT}>{`pushed ${timeAgo(g.lastPushAt)}`}</text> : null}
-        </box>
+        <text bg={PANEL}>
+          <span fg={INK}>{compactNum(g.followers)}</span>
+          <span fg={MUTED}>{" followers"}</span>
+          <span fg={FAINT}>{SEP}</span>
+          <span fg={INK}>{g.repos}</span>
+          <span fg={MUTED}>{" repos"}</span>
+          <span fg={FAINT}>{SEP}</span>
+          <span fg={ACCENT}>{`${compactNum(g.stars)}★`}</span>
+        </text>
       ) : (
         <text bg={PANEL} fg={FAINT}>
           …
@@ -1126,7 +1125,6 @@ function VisitorChart({ data }: { data: number[] }) {
     }
   }
   const rowsOut = grid.map((cells, rowIdx) => {
-    const gutter = rowIdx === 0 ? `${max}`.padStart(3) + " " : rowIdx === CHART_ROWS - 1 ? "  0 " : "    ";
     const spans: { fg: string; bg?: string; text: string }[] = [];
     for (const cell of cells) {
       const last = spans[spans.length - 1];
@@ -1135,7 +1133,6 @@ function VisitorChart({ data }: { data: number[] }) {
     }
     return (
       <text key={rowIdx}>
-        <span fg={FAINT}>{gutter}</span>
         {spans.map((s, k) => (
           <span key={k} fg={s.fg} bg={s.bg}>
             {s.text}
@@ -1148,8 +1145,8 @@ function VisitorChart({ data }: { data: number[] }) {
   return (
     <box style={{ flexDirection: "column" }}>
       {rowsOut}
-      <text fg={FAINT}>{"    " + "─".repeat(W)}</text>
-      <text fg={FAINT}>{"    " + span}</text>
+      <text fg={FAINT}>{"─".repeat(W)}</text>
+      <text fg={FAINT}>{span}</text>
     </box>
   );
 }
@@ -1205,10 +1202,10 @@ function NowPlaying() {
   }, []);
   if (!state || !state.configured) return null;
   const playing = state.isPlaying && state.current ? state.current : null;
-  // playing → current + 2 previous; idle → 3 most-recent
+  // 4 songs total: playing → current + 3 previous; idle → 4 most-recent
   const previous = state.recent
     .filter((e) => !playing || e.track.name !== playing.name)
-    .slice(0, playing ? 2 : 3);
+    .slice(0, playing ? 3 : 4);
   if (!playing && previous.length === 0) {
     return (
       <Stat label="RECENTLY PLAYED">
@@ -1218,13 +1215,20 @@ function NowPlaying() {
       </Stat>
     );
   }
+  const meta = !playing && previous[0]?.playedAt ? timeAgo(previous[0].playedAt) : undefined;
   return (
-    <Stat label={playing ? "NOW PLAYING" : "RECENTLY PLAYED"}>
+    <Stat label={playing ? "NOW PLAYING" : "RECENTLY PLAYED"} meta={meta}>
       {playing ? (
         <box style={{ flexDirection: "column" }}>
           <text bg={PANEL}>
             <span fg={ACCENT}>{"♫ "}</span>
-            <span fg={INK}>{truncate(playing.name, 34)}</span>
+            {playing.songUrl ? (
+              <a href={playing.songUrl} fg={INK} attributes={TextAttributes.UNDERLINE}>
+                {truncate(playing.name, 34)}
+              </a>
+            ) : (
+              <span fg={INK}>{truncate(playing.name, 34)}</span>
+            )}
             <span fg={MUTED}>{playing.artists.length ? `  —  ${truncate(playing.artists.join(", "), 22)}` : ""}</span>
           </text>
           {state.progressMs != null && state.durationMs ? (
@@ -1237,9 +1241,14 @@ function NowPlaying() {
       {previous.map((e, i) => (
         <text key={i} bg={PANEL}>
           <span fg={FAINT}>{"· "}</span>
-          <span fg={!playing && i === 0 ? INK : MUTED}>{truncate(e.track.name, 32)}</span>
+          {e.track.songUrl ? (
+            <a href={e.track.songUrl} fg={!playing && i === 0 ? INK : MUTED} attributes={TextAttributes.UNDERLINE}>
+              {truncate(e.track.name, 32)}
+            </a>
+          ) : (
+            <span fg={!playing && i === 0 ? INK : MUTED}>{truncate(e.track.name, 32)}</span>
+          )}
           <span fg={MUTED}>{e.track.artists.length ? ` — ${truncate(e.track.artists.join(", "), 18)}` : ""}</span>
-          {e.playedAt ? <span fg={FAINT}>{`  ${timeAgo(e.playedAt)}`}</span> : null}
         </text>
       ))}
     </Stat>
@@ -1250,12 +1259,8 @@ function Home({ visit }: { visit: VisitInfo }) {
   return (
     <box style={{ flexDirection: "row", alignItems: "flex-start", paddingLeft: 2, paddingTop: 1 }}>
       <box style={{ flexDirection: "column", width: 50 }}>
-        <LiveNow />
         <Stat label="VISITORS">
-          <text bg={PANEL}>
-            <strong fg={ACCENT}>{`#${commas(visit.count)}`}</strong>
-            <span fg={MUTED}>{" total"}</span>
-          </text>
+          <VisitorHead total={visit.count} />
           <box style={{ height: 1 }} />
           <VisitorChart data={visit.daily} />
         </Stat>
