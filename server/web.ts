@@ -1,5 +1,6 @@
 import { PassThrough, Writable } from "node:stream";
 import { startSession } from "../tui/session";
+import { SEO_HEAD, SEO_BODY, robotsTxt, sitemapXml, llmsTxt } from "./seo";
 
 const PORT = Number(process.env.PORT ?? 8787);
 
@@ -8,7 +9,7 @@ const HTML = `<!doctype html>
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>xiao.sh</title>
+<title>xiao.sh</title>${SEO_HEAD}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css" />
 <style>
   html,body{margin:0;height:100%;background:#05080a;overflow:hidden;}
@@ -37,9 +38,12 @@ const HTML = `<!doctype html>
   @media (prefers-reduced-motion: reduce){
     .crt-overlay{animation:none}
   }
+  /* crawlable content for search / AI bots; off-screen for humans (terminal covers the page) */
+  .seo-content{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
 </style>
 </head>
 <body>
+${SEO_BODY}
 <div id="app"></div>
 <div class="crt-vignette"></div>
 <div class="crt-tint"></div>
@@ -113,6 +117,10 @@ Bun.serve<SessionData>({
       if (server.upgrade(req, { data: { stdin: null, renderer: null, starting: false } })) return;
       return new Response("websocket upgrade failed", { status: 400 });
     }
+    // SEO/GEO endpoints
+    if (url.pathname === "/robots.txt") return new Response(robotsTxt(), { headers: { "content-type": "text/plain; charset=utf-8" } });
+    if (url.pathname === "/sitemap.xml") return new Response(sitemapXml(), { headers: { "content-type": "application/xml; charset=utf-8" } });
+    if (url.pathname === "/llms.txt") return new Response(llmsTxt(), { headers: { "content-type": "text/plain; charset=utf-8" } });
     return new Response(HTML, { headers: { "content-type": "text/html; charset=utf-8" } });
   },
   websocket: {
