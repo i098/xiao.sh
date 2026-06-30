@@ -12,7 +12,7 @@ import { getSpotify, type SpotifyState } from "@/lib/spotify";
 import { autoName, deleteSession, listSessions, loadSession, saveSession, type SavedSession } from "@/lib/sessions";
 import { liveCount } from "@/lib/presence";
 import { getGitHub, type GitHubPulse } from "@/lib/github";
-import { recentQuestion, recordQuestion, topQuestions } from "@/lib/questions";
+import { recordQuestion } from "@/lib/questions";
 
 // Editorial palette: green ACCENT reserved for links/active/live; neutral INK/MUTED/FAINT for hierarchy.
 const ACCENT = "#43f08a";
@@ -1073,26 +1073,38 @@ function GitHubPulse() {
       alive = false;
     };
   }, []);
-  if (!g) return null;
   return (
     <Stat label="GITHUB">
-      <text bg={PANEL}>
-        <span fg={INK}>{compactNum(g.followers)}</span>
-        <span fg={MUTED}>{" followers"}</span>
-        <span fg={FAINT}>{SEP}</span>
-        <span fg={INK}>{g.repos}</span>
-        <span fg={MUTED}>{" repos"}</span>
-        <span fg={FAINT}>{SEP}</span>
-        <span fg={ACCENT}>{`${compactNum(g.stars)}★`}</span>
-      </text>
-      {g.lastPushAt ? <text bg={PANEL} fg={FAINT}>{`pushed ${timeAgo(g.lastPushAt)}`}</text> : null}
+      {g ? (
+        <box style={{ flexDirection: "column" }}>
+          <text bg={PANEL}>
+            <span fg={INK}>{compactNum(g.followers)}</span>
+            <span fg={MUTED}>{" followers"}</span>
+            <span fg={FAINT}>{SEP}</span>
+            <span fg={INK}>{g.repos}</span>
+            <span fg={MUTED}>{" repos"}</span>
+            <span fg={FAINT}>{SEP}</span>
+            <span fg={ACCENT}>{`${compactNum(g.stars)}★`}</span>
+          </text>
+          {g.lastPushAt ? <text bg={PANEL} fg={FAINT}>{`pushed ${timeAgo(g.lastPushAt)}`}</text> : null}
+        </box>
+      ) : (
+        <text bg={PANEL} fg={FAINT}>
+          …
+        </text>
+      )}
     </Stat>
   );
 }
 
 // daily-visits bar chart — multi-row, sub-cell block resolution, with a y-axis (max/0)
 const CHART_ROWS = 7;
-const BAR_W = 2; // cells per day column
+const BAR_W = 3; // cells per day column — 3 wide so per-day counts get their own centered slot
+function centerIn(s: string, w: number) {
+  if (s.length >= w) return s.slice(0, w);
+  const left = Math.floor((w - s.length) / 2);
+  return " ".repeat(left) + s + " ".repeat(w - s.length - left);
+}
 function VisitorChart({ data }: { data: number[] }) {
   const max = Math.max(1, ...data);
   const rows = [];
@@ -1107,8 +1119,9 @@ function VisitorChart({ data }: { data: number[] }) {
     rows.push({ gutter, bars });
   }
   const axisW = data.length * BAR_W;
-  // per-day count under each bar (BAR_W cells wide, blank for 0 days)
-  const countsRow = data.map((v) => (v > 0 ? String(v).padStart(BAR_W) : " ·".padStart(BAR_W))).join("");
+  // per-day count centered under each bar's slot (so 6 and 11 never merge into 611)
+  const countsRow = data.map((v) => centerIn(v > 0 ? String(v) : "·", BAR_W)).join("");
+  const span = "14 days ago" + " ".repeat(Math.max(1, axisW - 16)) + "today";
   // transparent bg: bars (solid blocks) occlude the koi where they are; the pond shows
   // through the empty cells above them
   return (
@@ -1121,7 +1134,7 @@ function VisitorChart({ data }: { data: number[] }) {
       ))}
       <text fg={FAINT}>{"    " + "─".repeat(axisW)}</text>
       <text fg={MUTED}>{"    " + countsRow}</text>
-      <text fg={FAINT}>{"    14 days ago" + " ".repeat(Math.max(1, axisW - 19)) + "today"}</text>
+      <text fg={FAINT}>{"    " + span}</text>
     </box>
   );
 }
@@ -1218,36 +1231,10 @@ function NowPlaying() {
   );
 }
 
-// most-asked chat questions: the latest one + the most-frequent
-function TopAsked() {
-  const [recent] = useState(() => recentQuestion());
-  const [top] = useState(() => topQuestions(3));
-  const popular = top.filter((q) => q.text !== recent).slice(0, 2);
-  if (!recent && popular.length === 0) return null;
-  return (
-    <Stat label="ASKED">
-      {recent ? (
-        <text bg={PANEL}>
-          <span fg={FAINT}>{"· "}</span>
-          <span fg={INK}>{truncate(recent, 36)}</span>
-          <span fg={FAINT}>{"  latest"}</span>
-        </text>
-      ) : null}
-      {popular.map((q, i) => (
-        <text key={i} bg={PANEL}>
-          <span fg={FAINT}>{"· "}</span>
-          <span fg={MUTED}>{truncate(q.text, 36)}</span>
-          <span fg={FAINT}>{`  ×${q.count}`}</span>
-        </text>
-      ))}
-    </Stat>
-  );
-}
-
 function Home({ visit }: { visit: VisitInfo }) {
   return (
-    <box style={{ flexDirection: "row", paddingLeft: 2, paddingTop: 2 }}>
-      <box style={{ flexDirection: "column", width: 46 }}>
+    <box style={{ flexDirection: "row", alignItems: "flex-start", paddingLeft: 2, paddingTop: 2 }}>
+      <box style={{ flexDirection: "column", width: 50 }}>
         <LiveNow />
         <Stat label="VISITORS">
           <text bg={PANEL}>
@@ -1261,7 +1248,6 @@ function Home({ visit }: { visit: VisitInfo }) {
       <box style={{ flexDirection: "column", paddingLeft: 4 }}>
         <GitHubPulse />
         <NowPlaying />
-        <TopAsked />
       </box>
     </box>
   );
