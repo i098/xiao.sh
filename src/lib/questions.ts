@@ -10,7 +10,6 @@ import path from "node:path";
 const FILE = path.join(process.cwd(), ".data", "questions.json");
 const MAX_LEN = 80;
 const MIN_LEN = 6;
-const MIN_SHOW = 2; // only show questions asked at least this many times
 
 // looks-like-contact-info — if any matches, the question is dropped entirely (not stored)
 const PII = [
@@ -58,16 +57,4 @@ export function recordQuestion(text: string): void {
   } catch {
     // best-effort
   }
-}
-
-export function topQuestions(n: number): Entry[] {
-  return Object.values(read().items)
-    .filter((e) => e.count >= MIN_SHOW)
-    .sort((a, b) => b.count - a.count)
-    .slice(0, n);
-}
-
-// the single most-recent question (passes the same PII filter as everything stored)
-export function recentQuestion(): string | null {
-  return read().last ?? null;
 }

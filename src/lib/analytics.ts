@@ -24,12 +24,3 @@ export function capture(distinctId: string, event: string, properties?: Record<s
     // analytics must never break the app
   }
 }
-
-export async function shutdownAnalytics(): Promise<void> {
-  if (!client) return;
-  try {
-    await client.shutdown();
-  } catch {
-    // ignore
-  }
-}

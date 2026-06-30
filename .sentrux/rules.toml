@@ -1,0 +1,11 @@
+# Structural rules for xiao.sh — enforced by `sentrux check` (advisory) and the gate.
+# Tuned to the current codebase: no cycles / no god files, with headroom on the
+# inherently large pieces (the koi sim in tui/app.tsx, the linkedin scraper).
+[constraints]
+max_cycles = 0
+no_god_files = true
+max_upward_violations = 0
+max_cc = 20            # cyclomatic complexity per function
+max_fn_lines = 360     # KoiPond (procedural fish + water sim) is the ceiling
+max_file_lines = 1600  # tui/app.tsx + scripts/sync-linkedin-about.ts
+max_coupling_score = 0.12
