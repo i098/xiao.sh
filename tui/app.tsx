@@ -995,15 +995,35 @@ function fmtMs(ms: number) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-// daily-visits sparkline
-function Sparkline({ data }: { data: number[] }) {
+// daily-visits bar chart — multi-row, sub-cell block resolution, with a y-axis (max/0)
+const CHART_ROWS = 7;
+const BAR_W = 2; // cells per day column
+function VisitorChart({ data }: { data: number[] }) {
   const max = Math.max(1, ...data);
-  const line = data.map((v) => BARS[Math.min(BARS.length - 1, Math.round((v / max) * (BARS.length - 1)))]).join("");
+  const rows = [];
+  for (let r = CHART_ROWS - 1; r >= 0; r -= 1) {
+    let bars = "";
+    for (const v of data) {
+      const level = (v / max) * CHART_ROWS - r; // fractional rows of this bar still above row r
+      const ch = level >= 1 ? "█" : level <= 0 ? " " : BARS[Math.max(0, Math.min(7, Math.floor(level * 8)))];
+      bars += ch.repeat(BAR_W);
+    }
+    const gutter = r === CHART_ROWS - 1 ? `${max}`.padStart(3) + " " : r === 0 ? "  0 " : "    ";
+    rows.push({ gutter, bars });
+  }
+  const axisW = data.length * BAR_W;
+  const caption = "14d ago".padEnd(Math.max(8, axisW - 5)) + "today";
   return (
-    <text bg={PANEL}>
-      <span fg={ACCENT}>{line}</span>
-      <span fg={FAINT}>{`  ${data.length}d`}</span>
-    </text>
+    <box style={{ flexDirection: "column" }}>
+      {rows.map((row, i) => (
+        <text key={i} bg={PANEL}>
+          <span fg={FAINT}>{row.gutter}</span>
+          <span fg={ACCENT}>{row.bars}</span>
+        </text>
+      ))}
+      <text bg={PANEL} fg={FAINT}>{"    " + "─".repeat(axisW)}</text>
+      <text bg={PANEL} fg={FAINT}>{"    " + caption}</text>
+    </box>
   );
 }
 
@@ -1103,7 +1123,8 @@ function Home({ visit }: { visit: VisitInfo }) {
         <strong fg={ACCENT}>{`#${commas(visit.count)}`}</strong>
         <span fg={MUTED}>{`  all-time · ${visit.daily[visit.daily.length - 1] ?? 0} today`}</span>
       </text>
-      <Sparkline data={visit.daily} />
+      <box style={{ height: 1 }} />
+      <VisitorChart data={visit.daily} />
       <box style={{ height: 1 }} />
       <NowPlaying />
     </box>
