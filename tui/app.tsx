@@ -1097,43 +1097,59 @@ function GitHubPulse() {
   );
 }
 
-// daily-visits bar chart — multi-row, sub-cell block resolution, with a y-axis (max/0)
+// daily-visits bar chart — multi-row, sub-cell block resolution, with a y-axis (max/0).
+// Each day's count is written vertically (digit per row) in the bar's center column.
 const CHART_ROWS = 7;
-const BAR_W = 3; // cells per day column — 3 wide so per-day counts get their own centered slot
-function centerIn(s: string, w: number) {
-  if (s.length >= w) return s.slice(0, w);
-  const left = Math.floor((w - s.length) / 2);
-  return " ".repeat(left) + s + " ".repeat(w - s.length - left);
-}
+const BAR_W = 3; // cells per day column — center column holds the vertical count
+type ChartCell = { ch: string; fg: string };
 function VisitorChart({ data }: { data: number[] }) {
   const max = Math.max(1, ...data);
-  const rows = [];
-  for (let r = CHART_ROWS - 1; r >= 0; r -= 1) {
-    let bars = "";
-    for (const v of data) {
-      const level = (v / max) * CHART_ROWS - r; // fractional rows of this bar still above row r
-      const ch = level >= 1 ? "█" : level <= 0 ? " " : BARS[Math.max(0, Math.min(7, Math.floor(level * 8)))];
-      bars += ch.repeat(BAR_W);
+  const W = data.length * BAR_W;
+  const grid: ChartCell[][] = Array.from({ length: CHART_ROWS }, () =>
+    Array.from({ length: W }, () => ({ ch: " ", fg: ACCENT })),
+  );
+  for (let i = 0; i < data.length; i += 1) {
+    const v = data[i];
+    // bars (sub-cell partials at the top), drawn from the bottom up
+    for (let d = 0; d < CHART_ROWS; d += 1) {
+      const level = (v / max) * CHART_ROWS - d;
+      if (level <= 0) continue;
+      const ch = level >= 1 ? "█" : BARS[Math.max(0, Math.min(7, Math.floor(level * 8)))];
+      const rowIdx = CHART_ROWS - 1 - d;
+      for (let k = 0; k < BAR_W; k += 1) grid[rowIdx][i * BAR_W + k] = { ch, fg: ACCENT };
     }
-    const gutter = r === CHART_ROWS - 1 ? `${max}`.padStart(3) + " " : r === 0 ? "  0 " : "    ";
-    rows.push({ gutter, bars });
+    // count, vertical, anchored to the bottom of the bar's center column (reads top→bottom)
+    const digits = v > 0 ? String(v) : "·";
+    const cx = i * BAR_W + Math.floor(BAR_W / 2);
+    for (let j = 0; j < digits.length; j += 1) {
+      const rowIdx = CHART_ROWS - digits.length + j;
+      if (rowIdx >= 0 && rowIdx < CHART_ROWS) grid[rowIdx][cx] = { ch: digits[j], fg: INK };
+    }
   }
-  const axisW = data.length * BAR_W;
-  // per-day count centered under each bar's slot (so 6 and 11 never merge into 611)
-  const countsRow = data.map((v) => centerIn(v > 0 ? String(v) : "·", BAR_W)).join("");
-  const span = "14 days ago" + " ".repeat(Math.max(1, axisW - 16)) + "today";
-  // transparent bg: bars (solid blocks) occlude the koi where they are; the pond shows
-  // through the empty cells above them
+  const rowsOut = grid.map((cells, rowIdx) => {
+    const gutter = rowIdx === 0 ? `${max}`.padStart(3) + " " : rowIdx === CHART_ROWS - 1 ? "  0 " : "    ";
+    const spans: { fg: string; text: string }[] = [];
+    for (const cell of cells) {
+      const last = spans[spans.length - 1];
+      if (last && last.fg === cell.fg) last.text += cell.ch;
+      else spans.push({ fg: cell.fg, text: cell.ch });
+    }
+    return (
+      <text key={rowIdx}>
+        <span fg={FAINT}>{gutter}</span>
+        {spans.map((s, k) => (
+          <span key={k} fg={s.fg}>
+            {s.text}
+          </span>
+        ))}
+      </text>
+    );
+  });
+  const span = "14 days ago" + " ".repeat(Math.max(1, W - 16)) + "today";
   return (
     <box style={{ flexDirection: "column" }}>
-      {rows.map((row, i) => (
-        <text key={i}>
-          <span fg={FAINT}>{row.gutter}</span>
-          <span fg={ACCENT}>{row.bars}</span>
-        </text>
-      ))}
-      <text fg={FAINT}>{"    " + "─".repeat(axisW)}</text>
-      <text fg={MUTED}>{"    " + countsRow}</text>
+      {rowsOut}
+      <text fg={FAINT}>{"    " + "─".repeat(W)}</text>
       <text fg={FAINT}>{"    " + span}</text>
     </box>
   );
@@ -1233,7 +1249,7 @@ function NowPlaying() {
 
 function Home({ visit }: { visit: VisitInfo }) {
   return (
-    <box style={{ flexDirection: "row", alignItems: "flex-start", paddingLeft: 2, paddingTop: 2 }}>
+    <box style={{ flexDirection: "row", alignItems: "flex-start", paddingLeft: 2, paddingTop: 1 }}>
       <box style={{ flexDirection: "column", width: 50 }}>
         <LiveNow />
         <Stat label="VISITORS">
