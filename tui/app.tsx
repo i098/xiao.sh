@@ -1093,7 +1093,7 @@ function Home({ visit }: { visit: VisitInfo }) {
         <strong fg={INK}>{profile.name}</strong>
       </text>
       <text bg={PANEL} fg={MUTED}>
-        builder · {profile.education} · class of 2029
+        CS @ Northeastern
       </text>
       <box style={{ height: 1 }} />
       <text bg={PANEL} fg={FAINT}>
