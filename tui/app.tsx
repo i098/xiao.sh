@@ -1093,16 +1093,18 @@ function VisitorChart({ data }: { data: number[] }) {
   }
   const axisW = data.length * BAR_W;
   const caption = "14d ago".padEnd(Math.max(8, axisW - 5)) + "today";
+  // transparent bg: bars (solid blocks) occlude the koi where they are; the pond shows
+  // through the empty cells above them
   return (
     <box style={{ flexDirection: "column" }}>
       {rows.map((row, i) => (
-        <text key={i} bg={PANEL}>
+        <text key={i}>
           <span fg={FAINT}>{row.gutter}</span>
           <span fg={ACCENT}>{row.bars}</span>
         </text>
       ))}
-      <text bg={PANEL} fg={FAINT}>{"    " + "─".repeat(axisW)}</text>
-      <text bg={PANEL} fg={FAINT}>{"    " + caption}</text>
+      <text fg={FAINT}>{"    " + "─".repeat(axisW)}</text>
+      <text fg={FAINT}>{"    " + caption}</text>
     </box>
   );
 }
