@@ -1,5 +1,7 @@
-import Link from "next/link";
 import { getLinkedInSnapshot } from "@/lib/linkedin";
+import { Panel } from "@/components/panel";
+import Scramble from "@/components/scramble";
+import { TransitionLink } from "@/components/transition-link";
 import { profile } from "@/lib/profile";
 import { EXTERNAL_LINK_ARROW } from "@/lib/symbols";
 
@@ -65,37 +67,36 @@ export default async function AboutPage() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-6xl px-5 py-10 md:px-8 md:py-12">
-      <header className="mb-6 border border-[var(--line)] bg-[var(--panel-2)] p-4 md:p-5">
+      <Panel title="session" index={0} className="mb-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2 leading-none">
-            <p className="text-sm font-medium tracking-tight">xiao.sh</p>
+            <p className="text-sm font-medium tracking-tight text-[var(--accent)]">xiao.sh</p>
             <span aria-hidden="true" className="h-3 w-px bg-[var(--line)]" />
             <p className="relative top-px text-[10px] uppercase tracking-[0.14em] text-[var(--muted)]">
-              Synced with LinkedIn
+              synced with linkedin
             </p>
           </div>
           <nav className="flex items-center gap-3 text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">
-            <Link href="/" className="border border-[var(--line)] px-2 py-1 hover:text-[var(--text)]">
-              Home
-            </Link>
-            <Link href="/chat" className="border border-[var(--line)] px-2 py-1 hover:text-[var(--text)]">
-              Chat
-            </Link>
+            <TransitionLink href="/" className="tui-chip">
+              home
+            </TransitionLink>
+            <TransitionLink href="/chat" className="tui-chip">
+              chat
+            </TransitionLink>
             <a
               href={linkedIn.profile.linkedinUrl || profile.links.linkedin}
               target="_blank"
               rel="noreferrer"
-              className="border border-[var(--line)] px-2 py-1 hover:text-[var(--text)]"
+              className="tui-chip"
             >
-              LinkedIn {EXTERNAL_LINK_ARROW}
+              linkedin {EXTERNAL_LINK_ARROW}
             </a>
           </nav>
         </div>
-      </header>
+      </Panel>
 
-      <section className="border border-[var(--line)] bg-[var(--panel)] p-6 md:p-8">
-        <p className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">About</p>
-        <div className="mt-4 flex flex-col gap-5 md:flex-row md:items-stretch">
+      <Panel title="cat about" index={1}>
+        <div className="mt-1 flex flex-col gap-5 md:flex-row md:items-stretch">
           {linkedIn.profile.imageUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -105,7 +106,7 @@ export default async function AboutPage() {
             />
           )}
           <div className="min-w-0">
-            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">{linkedIn.profile.name}</h1>
+            <Scramble as="h1" className="text-3xl font-semibold tracking-tight md:text-4xl" text={linkedIn.profile.name} />
             {linkedIn.profile.title && (
               <p className="mt-2 text-sm text-[var(--muted)] md:text-base">{linkedIn.profile.title}</p>
             )}
@@ -127,25 +128,22 @@ export default async function AboutPage() {
             </p>
           </div>
         </div>
-      </section>
+      </Panel>
 
-      <section className="mt-6">
-        <article className="border border-[var(--line)] bg-[var(--panel)] p-6">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Languages</p>
-            <p className="text-xs text-[var(--muted)]">{languageItems.length} entries</p>
-          </div>
-          {languageItems.length > 0 ? (
-            <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">{languageLine}</p>
-          ) : (
-            <p className="mt-3 text-sm text-[var(--muted)]">No languages are listed on the current profile data.</p>
-          )}
-        </article>
-      </section>
+      <Panel title="languages" index={2} className="mt-6">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">languages</p>
+          <p className="text-xs text-[var(--muted)]">{languageItems.length} entries</p>
+        </div>
+        {languageItems.length > 0 ? (
+          <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">{languageLine}</p>
+        ) : (
+          <p className="mt-3 text-sm text-[var(--muted)]">No languages are listed on the current profile data.</p>
+        )}
+      </Panel>
 
-      <section className="mt-6 border border-[var(--line)] bg-[var(--panel)] p-6 md:p-8">
-        <p className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Contact</p>
-        <div className="mt-4 grid gap-2 text-sm text-[var(--muted)] md:grid-cols-2">
+      <Panel title="contact" index={3} className="mt-6">
+        <div className="grid gap-2 text-sm text-[var(--muted)] md:grid-cols-2">
           <p>
             <span className="text-[var(--text)]">Email:</span>{" "}
             <a href={`mailto:${profile.links.email}`} className="hover:text-[var(--text)]">
@@ -168,18 +166,17 @@ export default async function AboutPage() {
             </a>
           </p>
         </div>
-      </section>
+      </Panel>
 
-      <section className="mt-6 border border-[var(--line)] bg-[var(--panel)] p-6 md:p-8">
-        <p className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Core Stack</p>
-        <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">
+      <Panel title="stack" index={4} className="mt-6">
+        <p className="text-sm leading-relaxed text-[var(--muted)]">
           {displayStack.length > 0 ? displayStack.slice(0, 12).join(" · ") : profile.skills.join(" · ")}
         </p>
-      </section>
+      </Panel>
 
-      <section className="mt-6 border border-[var(--line)] bg-[var(--panel)] p-6 md:p-8">
+      <Panel title="posts" index={5} className="mt-6">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <p className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">LinkedIn Posts</p>
+          <p className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">linkedin posts</p>
           <p className="text-xs text-[var(--muted)]">{topPosts.length} shown</p>
         </div>
 
@@ -226,7 +223,7 @@ export default async function AboutPage() {
             </article>
           ))}
         </div>
-      </section>
+      </Panel>
     </main>
   );
 }

@@ -1,15 +1,41 @@
 # xiao.sh
 
-Minimal portfolio built with Next.js, TypeScript, React, and Tailwind CSS.
+Portfolio as a terminal app (TUI), built with [OpenTUI](https://github.com/anomalyco/opentui) + React on Bun.
+Reachable two ways from the same app: over SSH, or in the browser via an xterm.js ↔ websocket bridge.
 
-## Local development
+## Run the TUI
 
 ```bash
 bun install
-bun run dev
+
+bun run tui     # standalone, in your own terminal
+bun run start   # serve both: web terminal (:8787) + ssh (:2222)
+bun run web     # web terminal only
+bun run ssh     # ssh only
 ```
 
-Open `http://localhost:3000`.
+- Browser: open `http://localhost:8787` — you land directly in the TUI.
+- SSH: `ssh -p 2222 guest@localhost` (any username; auth is open, only the TUI is served — no shell/exec).
+
+Keys: `h` home · `p` projects (`j`/`k` to move) · `a` about · `c` chat · `l` links · `q` quit.
+
+Layout:
+
+- App UI: `tui/app.tsx` · entry `tui/main.tsx` · per-session renderer `tui/session.tsx`
+- Servers: `server/web.ts` (Bun HTTP+WS+xterm), `server/ssh.ts` (ssh2), `server/index.ts` (both)
+- Data/AI (shared): `src/lib/{profile,projects,linkedin,ai}.ts`, `src/data/`
+
+The chat screen calls `src/lib/ai.ts`, which needs `OPENROUTER_API_KEY` in the environment
+(`.env` / exported). Without it, chat shows a config message; everything else works offline.
+
+> The original Next.js web app is kept under `src/app/` + `src/components/` (not served).
+> Its scripts are namespaced `next:*` (`bun run next:dev`).
+
+## Legacy Next.js web app
+
+```bash
+bun run next:dev    # http://localhost:3000
+```
 
 ## OpenRouter (AI Search)
 

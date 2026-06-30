@@ -4,14 +4,14 @@
 
 :root {
   color-scheme: dark;
-  --bg-0: #090d12;
-  --bg-1: #0f1620;
-  --panel: #111922;
-  --panel-2: #0d141d;
-  --text: #e9edf2;
-  --muted: #9aa5b1;
-  --line: #2a3440;
-  --accent: #6ee7ff;
+  --bg-0: #05080a;
+  --bg-1: #0a1012;
+  --panel: #0a0f0d;
+  --panel-2: #070b0a;
+  --text: #cfe9d6;
+  --muted: #5f8f76;
+  --line: #1d3327;
+  --accent: #43f08a;
 }
 
 * {
@@ -33,36 +33,20 @@ html {
 body {
   position: relative;
   min-height: 100dvh;
-  background: transparent;
   background-color: var(--bg-0);
   overscroll-behavior-y: none;
   color: var(--text);
-  font-family: var(--font-sans), sans-serif;
+  font-family: var(--font-sans), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   isolation: isolate;
 }
 
-.live-wallpaper {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  pointer-events: none;
-  background: var(--bg-0);
+a {
+  color: inherit;
 }
 
-.live-wallpaper-video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: brightness(0.35) saturate(0.95) contrast(1.05);
-}
-
-.live-wallpaper-dim {
-  position: fixed;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background: rgba(0, 0, 0, 0.01);
+::selection {
+  background: var(--accent);
+  color: var(--bg-0);
 }
 
 .app-shell {
@@ -70,6 +54,137 @@ body {
   z-index: 2;
 }
 
-a {
-  color: inherit;
+/* ---- CRT scanlines + vignette ---- */
+.crt {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0) 0,
+      rgba(0, 0, 0, 0) 2px,
+      rgba(0, 0, 0, 0.16) 3px,
+      rgba(0, 0, 0, 0) 4px
+    ),
+    radial-gradient(120% 120% at 50% 50%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.45) 100%);
+  mix-blend-mode: multiply;
+}
+
+/* ---- terminal panel ---- */
+.tui-panel {
+  position: relative;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  padding: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .tui-panel {
+    padding: 1.5rem;
+  }
+}
+
+/* hidden only while the boot overlay covers them; visible by default (no-JS safe) */
+[data-booting] .tui-panel {
+  opacity: 0;
+}
+
+[data-booted] .tui-panel {
+  animation: panel-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.tui-panel__title {
+  position: absolute;
+  top: -0.62em;
+  left: 0.85rem;
+  padding: 0 0.4rem;
+  background: var(--bg-0);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* nav / action chips */
+.tui-chip {
+  border: 1px solid var(--line);
+  padding: 0.25rem 0.5rem;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tui-chip:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* blinking caret */
+.tui-caret {
+  display: inline-block;
+  width: 0.55ch;
+  height: 1em;
+  background: var(--accent);
+  margin-left: 2px;
+  vertical-align: -0.15em;
+  animation: caret-blink 1s steps(1) infinite;
+}
+
+/* ---- boot screen ---- */
+.tui-boot {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 8vh 6vw;
+  background: var(--bg-0);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.7;
+  text-shadow: 0 0 6px rgba(67, 240, 138, 0.25);
+  transition: opacity 0.35s ease;
+  overflow: hidden;
+}
+
+.tui-boot--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tui-boot__inner {
+  white-space: pre-wrap;
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-booted] .tui-panel {
+    animation: none;
+  }
+  .tui-panel {
+    opacity: 1;
+  }
+  .tui-caret {
+    animation: none;
+  }
+  .crt {
+    background: radial-gradient(120% 120% at 50% 50%, rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, 0.4) 100%);
+  }
 }

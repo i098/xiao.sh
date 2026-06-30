@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import LiveWallpaper from "@/components/live-wallpaper";
-import { Space_Grotesk } from "next/font/google";
+import BootScreen from "@/components/boot-screen";
+import { JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
+const mono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-sans",
 });
@@ -20,9 +20,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${spaceGrotesk.variable} antialiased`}>
-        <LiveWallpaper />
-        <div className="live-wallpaper-dim" aria-hidden="true" />
+      <body className={`${mono.variable} antialiased`}>
+        {/* No-JS fallback: the boot overlay never lifts without JS, so hide it. */}
+        <noscript>
+          {/* eslint-disable-next-line react/no-danger */}
+          <style dangerouslySetInnerHTML={{ __html: ".tui-boot{display:none!important}" }} />
+        </noscript>
+        <BootScreen />
+        <div className="crt" aria-hidden="true" />
         <div className="app-shell">{children}</div>
       </body>
     </html>

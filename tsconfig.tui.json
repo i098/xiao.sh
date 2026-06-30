@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@opentui/react",
+    "types": ["node", "bun"],
+    "plugins": []
+  },
+  "include": ["tui/**/*.ts", "tui/**/*.tsx", "server/**/*.ts", "src/lib/**/*.ts"],
+  "exclude": ["node_modules"]
+}

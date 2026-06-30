@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Panel } from "@/components/panel";
+import { tuiNavigate } from "@/lib/navigate";
 import { EXTERNAL_LINK_ARROW, UP_ARROW } from "@/lib/symbols";
 
 type ChatMessage = {
@@ -396,13 +398,10 @@ export default function ChatClient() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-5xl px-5 py-10 md:px-8 md:py-12">
-      <header className="mb-6 border border-[var(--line)] bg-[var(--panel-2)] p-4 md:p-5">
+      <Panel title="session" index={0} className="mb-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => router.push("/")}
-              className="flex items-center gap-1 border border-[var(--line)] px-2 py-1 text-xs uppercase tracking-[0.12em] text-[var(--muted)] hover:text-[var(--text)]"
-            >
+            <button onClick={() => tuiNavigate("/")} className="tui-chip flex items-center gap-1 text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
@@ -414,23 +413,20 @@ export default function ChatClient() {
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 12H5m0 0 6-6m-6 6 6 6" />
               </svg>
-              <span>Return</span>
+              <span>cd ~</span>
             </button>
-            <button
-              onClick={clearChat}
-              className="border border-[var(--line)] px-2 py-1 text-xs uppercase tracking-[0.12em] text-[var(--muted)] hover:text-[var(--text)]"
-            >
-              Clear Chat
+            <button onClick={clearChat} className="tui-chip text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
+              clear chat
             </button>
           </div>
           <div className="text-right">
-            <p className="text-sm font-medium tracking-tight">Ask about me</p>
-            <p className="text-[10px] uppercase tracking-[0.14em] text-[var(--muted)]">Synced with GitHub</p>
+            <p className="text-sm font-medium tracking-tight text-[var(--accent)]">ask about me</p>
+            <p className="text-[10px] uppercase tracking-[0.14em] text-[var(--muted)]">synced with github</p>
           </div>
         </div>
-      </header>
+      </Panel>
 
-      <section className="border border-[var(--line)] bg-[var(--panel)] p-4 md:p-6">
+      <Panel title="chat" index={1}>
         <div className="max-h-[62vh] space-y-3 overflow-y-auto pr-1">
           {messages.length === 0 && (
             <p className="text-sm text-[var(--muted)]">
@@ -499,7 +495,7 @@ export default function ChatClient() {
             <span className="text-base leading-none">{UP_ARROW}</span>
           </button>
         </form>
-      </section>
+      </Panel>
     </main>
   );
 }

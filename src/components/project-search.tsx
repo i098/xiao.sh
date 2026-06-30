@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { Panel } from "@/components/panel";
 import type { Project } from "@/lib/projects";
+import { tuiNavigate } from "@/lib/navigate";
 import { EXTERNAL_LINK_ARROW, UP_ARROW } from "@/lib/symbols";
 
 type ProjectSearchProps = {
@@ -58,7 +59,6 @@ export default function ProjectSearch({
   query: controlledQuery,
   onQueryChange,
 }: ProjectSearchProps) {
-  const router = useRouter();
   const [internalQuery, setInternalQuery] = useState("");
   const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [typedChars, setTypedChars] = useState(0);
@@ -148,15 +148,14 @@ export default function ProjectSearch({
     event.preventDefault();
     const trimmedQuery = query.trim();
     if (!trimmedQuery) return;
-    router.push(`/chat?q=${encodeURIComponent(trimmedQuery)}`);
+    tuiNavigate(`/chat?q=${encodeURIComponent(trimmedQuery)}`);
   }
 
   return (
     <section id={showSearch ? "search" : undefined} className={className}>
       {showSearch && (
-        <div className="border border-[var(--line)] bg-[var(--panel)] p-5 md:p-6">
-          <p className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">AI Search</p>
-          <form onSubmit={openChat} className="mt-3 flex flex-col gap-2 md:flex-row">
+        <Panel title="ai-search" index={2}>
+          <form onSubmit={openChat} className="flex flex-col gap-2 md:flex-row">
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -177,13 +176,13 @@ export default function ProjectSearch({
             <p className="text-xs text-[var(--muted)]">{helperText}</p>
             <button
               type="button"
-              onClick={() => router.push("/chat")}
+              onClick={() => tuiNavigate("/chat")}
               className="shrink-0 border border-[var(--line)] px-2 py-1 text-[11px] uppercase tracking-[0.12em] text-[var(--muted)] hover:text-[var(--text)]"
             >
               Open Chat {EXTERNAL_LINK_ARROW}
             </button>
           </div>
-        </div>
+        </Panel>
       )}
 
       {showCards && (
