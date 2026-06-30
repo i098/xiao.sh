@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react";
 import { TextAttributes } from "@opentui/core";
 import { profile } from "@/lib/profile";
@@ -1027,6 +1027,20 @@ function timeAgo(iso: string) {
   return `${d}d ago`;
 }
 
+// Consistent stat card used across the home dashboard: a MUTED uppercase label,
+// then content. One shared rhythm so every block lines up.
+const SEP = "  ·  ";
+function Stat({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <box style={{ flexDirection: "column", marginBottom: 1 }}>
+      <text bg={PANEL} fg={MUTED}>
+        {label}
+      </text>
+      {children}
+    </box>
+  );
+}
+
 // live concurrent sessions (ssh + web), polled from the in-process counter
 function LiveNow() {
   const [n, setN] = useState(() => liveCount());
@@ -1035,15 +1049,17 @@ function LiveNow() {
     return () => clearInterval(id);
   }, []);
   return (
-    <text bg={PANEL}>
-      <span fg={ACCENT}>{"◉ "}</span>
-      <span fg={INK}>{n}</span>
-      <span fg={MUTED}>{n === 1 ? " online — just you" : " online now"}</span>
-    </text>
+    <Stat label="LIVE">
+      <text bg={PANEL}>
+        <span fg={ACCENT}>{"◉ "}</span>
+        <span fg={INK}>{n}</span>
+        <span fg={MUTED}>{" online"}</span>
+      </text>
+    </Stat>
   );
 }
 
-// GitHub pulse: followers · repos · stars · last push
+// GitHub pulse: followers · repos · stars + last push
 function GitHubPulse() {
   const [g, setG] = useState<GitHubPulse | null>(null);
   useEffect(() => {
@@ -1059,19 +1075,18 @@ function GitHubPulse() {
   }, []);
   if (!g) return null;
   return (
-    <box style={{ flexDirection: "column" }}>
-      <text bg={PANEL} fg={FAINT}>
-        GITHUB
-      </text>
+    <Stat label="GITHUB">
       <text bg={PANEL}>
         <span fg={INK}>{compactNum(g.followers)}</span>
-        <span fg={MUTED}>{" followers · "}</span>
+        <span fg={MUTED}>{" followers"}</span>
+        <span fg={FAINT}>{SEP}</span>
         <span fg={INK}>{g.repos}</span>
-        <span fg={MUTED}>{" repos · "}</span>
+        <span fg={MUTED}>{" repos"}</span>
+        <span fg={FAINT}>{SEP}</span>
         <span fg={ACCENT}>{`${compactNum(g.stars)}★`}</span>
-        {g.lastPushAt ? <span fg={MUTED}>{`  · pushed ${timeAgo(g.lastPushAt)}`}</span> : null}
       </text>
-    </box>
+      {g.lastPushAt ? <text bg={PANEL} fg={FAINT}>{`pushed ${timeAgo(g.lastPushAt)}`}</text> : null}
+    </Stat>
   );
 }
 
@@ -1161,11 +1176,7 @@ function NowPlaying() {
   if (!state || !state.configured) return null;
   const t = state.track;
   return (
-    <box style={{ flexDirection: "column" }}>
-      <text bg={PANEL}>
-        <span fg={MUTED}>{state.isPlaying ? "NOW PLAYING" : "LAST PLAYED"}</span>
-        {state.isPlaying ? <span fg={ACCENT}>{"  ●"}</span> : null}
-      </text>
+    <Stat label={state.isPlaying ? "NOW PLAYING" : "LAST PLAYED"}>
       {t && t.name ? (
         <box style={{ flexDirection: "column" }}>
           <text bg={PANEL}>
@@ -1184,7 +1195,7 @@ function NowPlaying() {
           nothing recently
         </text>
       )}
-    </box>
+    </Stat>
   );
 }
 
@@ -1193,10 +1204,7 @@ function TopAsked() {
   const [asked] = useState(() => topQuestions(3));
   if (asked.length === 0) return null;
   return (
-    <box style={{ flexDirection: "column" }}>
-      <text bg={PANEL} fg={FAINT}>
-        ASKED
-      </text>
+    <Stat label="ASKED">
       {asked.map((q, i) => (
         <text key={i} bg={PANEL}>
           <span fg={FAINT}>{"· "}</span>
@@ -1204,32 +1212,31 @@ function TopAsked() {
           <span fg={FAINT}>{`  ×${q.count}`}</span>
         </text>
       ))}
-    </box>
+    </Stat>
   );
 }
 
 function Home({ visit }: { visit: VisitInfo }) {
+  const today = visit.daily[visit.daily.length - 1] ?? 0;
   return (
     <box style={{ flexDirection: "row", paddingLeft: 2, paddingTop: 2 }}>
-      <box style={{ flexDirection: "column", width: 44 }}>
+      <box style={{ flexDirection: "column", width: 46 }}>
         <LiveNow />
-        <box style={{ height: 1 }} />
-        <text bg={PANEL} fg={FAINT}>
-          VISITORS
-        </text>
-        <text bg={PANEL}>
-          <strong fg={ACCENT}>{`#${commas(visit.count)}`}</strong>
-          <span fg={MUTED}>{`  all-time · ${visit.daily[visit.daily.length - 1] ?? 0} today`}</span>
-        </text>
-        <box style={{ height: 1 }} />
-        <VisitorChart data={visit.daily} />
+        <Stat label="VISITORS">
+          <text bg={PANEL}>
+            <strong fg={ACCENT}>{`#${commas(visit.count)}`}</strong>
+            <span fg={FAINT}>{SEP}</span>
+            <span fg={INK}>{today}</span>
+            <span fg={MUTED}>{" today"}</span>
+          </text>
+          <box style={{ height: 1 }} />
+          <VisitorChart data={visit.daily} />
+        </Stat>
       </box>
       <box style={{ flexDirection: "column", paddingLeft: 4 }}>
         <GitHubPulse />
-        <box style={{ height: 1 }} />
-        <TopAsked />
-        <box style={{ height: 1 }} />
         <NowPlaying />
+        <TopAsked />
       </box>
     </box>
   );
