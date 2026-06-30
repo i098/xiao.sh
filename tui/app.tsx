@@ -1097,48 +1097,47 @@ function GitHubPulse() {
   );
 }
 
-// daily-visits bar chart — multi-row, sub-cell block resolution, with a y-axis (max/0).
-// Each day's count is written vertically (digit per row) in the bar's center column.
+// daily-visits bar chart — solid green bars with each day's count carved into the bar
+// as a vertical (rotated) dark number in the center column.
 const CHART_ROWS = 7;
-const BAR_W = 3; // cells per day column — center column holds the vertical count
-type ChartCell = { ch: string; fg: string };
+const BAR_W = 3; // cells per day column — center column holds the rotated count
+const CARVE = "#05080a"; // page bg → dark digit reads as a cutout in the green bar
+type ChartCell = { ch: string; fg: string; bg?: string };
 function VisitorChart({ data }: { data: number[] }) {
   const max = Math.max(1, ...data);
   const W = data.length * BAR_W;
   const grid: ChartCell[][] = Array.from({ length: CHART_ROWS }, () =>
-    Array.from({ length: W }, () => ({ ch: " ", fg: ACCENT })),
+    Array.from({ length: W }, () => ({ ch: " ", fg: MUTED })),
   );
   for (let i = 0; i < data.length; i += 1) {
     const v = data[i];
-    // bars (sub-cell partials at the top), drawn from the bottom up
-    for (let d = 0; d < CHART_ROWS; d += 1) {
-      const level = (v / max) * CHART_ROWS - d;
-      if (level <= 0) continue;
-      const ch = level >= 1 ? "█" : BARS[Math.max(0, Math.min(7, Math.floor(level * 8)))];
+    const barRows = v > 0 ? Math.max(1, Math.round((v / max) * CHART_ROWS)) : 0;
+    // solid bar (green bg) from the bottom up
+    for (let d = 0; d < barRows; d += 1) {
       const rowIdx = CHART_ROWS - 1 - d;
-      for (let k = 0; k < BAR_W; k += 1) grid[rowIdx][i * BAR_W + k] = { ch, fg: ACCENT };
+      for (let k = 0; k < BAR_W; k += 1) grid[rowIdx][i * BAR_W + k] = { ch: " ", fg: ACCENT, bg: ACCENT };
     }
-    // count, vertical, anchored to the bottom of the bar's center column (reads top→bottom)
-    const digits = v > 0 ? String(v) : "·";
+    // count rotated 90° (one digit per row), carved dark into the bar, anchored at the bottom
+    const digits = v > 0 ? String(v) : "";
     const cx = i * BAR_W + Math.floor(BAR_W / 2);
     for (let j = 0; j < digits.length; j += 1) {
       const rowIdx = CHART_ROWS - digits.length + j;
-      if (rowIdx >= 0 && rowIdx < CHART_ROWS) grid[rowIdx][cx] = { ch: digits[j], fg: INK };
+      if (rowIdx >= CHART_ROWS - barRows && rowIdx < CHART_ROWS) grid[rowIdx][cx] = { ch: digits[j], fg: CARVE, bg: ACCENT };
     }
   }
   const rowsOut = grid.map((cells, rowIdx) => {
     const gutter = rowIdx === 0 ? `${max}`.padStart(3) + " " : rowIdx === CHART_ROWS - 1 ? "  0 " : "    ";
-    const spans: { fg: string; text: string }[] = [];
+    const spans: { fg: string; bg?: string; text: string }[] = [];
     for (const cell of cells) {
       const last = spans[spans.length - 1];
-      if (last && last.fg === cell.fg) last.text += cell.ch;
-      else spans.push({ fg: cell.fg, text: cell.ch });
+      if (last && last.fg === cell.fg && last.bg === cell.bg) last.text += cell.ch;
+      else spans.push({ fg: cell.fg, bg: cell.bg, text: cell.ch });
     }
     return (
       <text key={rowIdx}>
         <span fg={FAINT}>{gutter}</span>
         {spans.map((s, k) => (
-          <span key={k} fg={s.fg}>
+          <span key={k} fg={s.fg} bg={s.bg}>
             {s.text}
           </span>
         ))}
