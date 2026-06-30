@@ -21,12 +21,12 @@ const PII = [
 ];
 
 type Entry = { text: string; count: number };
-type Store = { items: Record<string, Entry> };
+type Store = { items: Record<string, Entry>; last?: string };
 
 function read(): Store {
   try {
     const parsed = JSON.parse(readFileSync(FILE, "utf8")) as Partial<Store>;
-    return { items: parsed.items ?? {} };
+    return { items: parsed.items ?? {}, last: parsed.last };
   } catch {
     return { items: {} };
   }
@@ -49,7 +49,9 @@ export function recordQuestion(text: string): void {
   const key = normalize(t);
   if (!key) return;
   const store = read();
-  store.items[key] = { text: t.slice(0, MAX_LEN), count: (store.items[key]?.count ?? 0) + 1 };
+  const clipped = t.slice(0, MAX_LEN);
+  store.items[key] = { text: clipped, count: (store.items[key]?.count ?? 0) + 1 };
+  store.last = clipped; // most-recent question (already PII-filtered above)
   try {
     mkdirSync(path.dirname(FILE), { recursive: true });
     writeFileSync(FILE, JSON.stringify(store));
@@ -63,4 +65,9 @@ export function topQuestions(n: number): Entry[] {
     .filter((e) => e.count >= MIN_SHOW)
     .sort((a, b) => b.count - a.count)
     .slice(0, n);
+}
+
+// the single most-recent question (passes the same PII filter as everything stored)
+export function recentQuestion(): string | null {
+  return read().last ?? null;
 }

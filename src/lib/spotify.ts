@@ -3,7 +3,7 @@
 // Reads SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET / SPOTIFY_REFRESH_TOKEN; no-op without them.
 const TOKEN_URL = "https://accounts.spotify.com/api/token";
 const NOW_URL = "https://api.spotify.com/v1/me/player/currently-playing";
-const RECENT_URL = "https://api.spotify.com/v1/me/player/recently-played?limit=1";
+const RECENT_URL = "https://api.spotify.com/v1/me/player/recently-played?limit=5";
 
 export type SpotifyTrack = {
   name: string;
@@ -13,22 +13,24 @@ export type SpotifyTrack = {
   imageUrl: string | null;
 };
 
+export type SpotifyEntry = { track: SpotifyTrack; playedAt: string | null };
+
 export type SpotifyState = {
   configured: boolean;
   isPlaying: boolean;
+  current: SpotifyTrack | null; // now playing (if any)
   progressMs: number | null;
   durationMs: number | null;
-  track: SpotifyTrack | null;
-  playedAt: string | null; // set when falling back to recently-played
+  recent: SpotifyEntry[]; // most-recently-played, newest first
 };
 
 const EMPTY = (configured: boolean): SpotifyState => ({
   configured,
   isPlaying: false,
+  current: null,
   progressMs: null,
   durationMs: null,
-  track: null,
-  playedAt: null,
+  recent: [],
 });
 
 function env(key: string): string | null {
@@ -80,38 +82,37 @@ function trackFrom(item: RawItem | undefined): SpotifyTrack {
 export async function getSpotify(): Promise<SpotifyState> {
   const token = await getAccessToken();
   if (!token) return EMPTY(false);
+  const auth = { Authorization: `Bearer ${token}` };
   try {
-    const res = await fetch(NOW_URL, { headers: { Authorization: `Bearer ${token}` } });
-    if (res.status === 200) {
-      const data = (await res.json()) as { is_playing?: boolean; currently_playing_type?: string; progress_ms?: number; item?: RawItem };
-      if (data?.item && data.currently_playing_type === "track") {
-        return {
-          configured: true,
-          isPlaying: Boolean(data.is_playing),
-          progressMs: typeof data.progress_ms === "number" ? data.progress_ms : null,
-          durationMs: typeof data.item.duration_ms === "number" ? data.item.duration_ms : null,
-          track: trackFrom(data.item),
-          playedAt: null,
-        };
+    let current: SpotifyTrack | null = null;
+    let isPlaying = false;
+    let progressMs: number | null = null;
+    let durationMs: number | null = null;
+
+    const [nowRes, recRes] = await Promise.all([
+      fetch(NOW_URL, { headers: auth }),
+      fetch(RECENT_URL, { headers: auth }),
+    ]);
+
+    if (nowRes.status === 200) {
+      const data = (await nowRes.json()) as { is_playing?: boolean; currently_playing_type?: string; progress_ms?: number; item?: RawItem };
+      if (data?.item && data.currently_playing_type === "track" && data.is_playing) {
+        current = trackFrom(data.item);
+        isPlaying = true;
+        progressMs = typeof data.progress_ms === "number" ? data.progress_ms : null;
+        durationMs = typeof data.item.duration_ms === "number" ? data.item.duration_ms : null;
       }
     }
-    // nothing playing → most recently played
-    const rec = await fetch(RECENT_URL, { headers: { Authorization: `Bearer ${token}` } });
-    if (rec.ok) {
-      const data = (await rec.json()) as { items?: Array<{ track?: RawItem; played_at?: string }> };
-      const it = data?.items?.[0];
-      if (it?.track) {
-        return {
-          configured: true,
-          isPlaying: false,
-          progressMs: null,
-          durationMs: typeof it.track.duration_ms === "number" ? it.track.duration_ms : null,
-          track: trackFrom(it.track),
-          playedAt: typeof it.played_at === "string" ? it.played_at : null,
-        };
-      }
+
+    let recent: SpotifyEntry[] = [];
+    if (recRes.ok) {
+      const data = (await recRes.json()) as { items?: Array<{ track?: RawItem; played_at?: string }> };
+      recent = (data?.items ?? [])
+        .filter((it) => it?.track)
+        .map((it) => ({ track: trackFrom(it.track), playedAt: typeof it.played_at === "string" ? it.played_at : null }));
     }
-    return EMPTY(true);
+
+    return { configured: true, isPlaying, current, progressMs, durationMs, recent };
   } catch {
     return EMPTY(true);
   }

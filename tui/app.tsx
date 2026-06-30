@@ -12,7 +12,7 @@ import { getSpotify, type SpotifyState } from "@/lib/spotify";
 import { autoName, deleteSession, listSessions, loadSession, saveSession, type SavedSession } from "@/lib/sessions";
 import { liveCount } from "@/lib/presence";
 import { getGitHub, type GitHubPulse } from "@/lib/github";
-import { recordQuestion, topQuestions } from "@/lib/questions";
+import { recentQuestion, recordQuestion, topQuestions } from "@/lib/questions";
 
 // Editorial palette: green ACCENT reserved for links/active/live; neutral INK/MUTED/FAINT for hierarchy.
 const ACCENT = "#43f08a";
@@ -1107,7 +1107,8 @@ function VisitorChart({ data }: { data: number[] }) {
     rows.push({ gutter, bars });
   }
   const axisW = data.length * BAR_W;
-  const caption = "14d ago".padEnd(Math.max(8, axisW - 5)) + "today";
+  // per-day count under each bar (BAR_W cells wide, blank for 0 days)
+  const countsRow = data.map((v) => (v > 0 ? String(v).padStart(BAR_W) : " ·".padStart(BAR_W))).join("");
   // transparent bg: bars (solid blocks) occlude the koi where they are; the pond shows
   // through the empty cells above them
   return (
@@ -1119,7 +1120,8 @@ function VisitorChart({ data }: { data: number[] }) {
         </text>
       ))}
       <text fg={FAINT}>{"    " + "─".repeat(axisW)}</text>
-      <text fg={FAINT}>{"    " + caption}</text>
+      <text fg={MUTED}>{"    " + countsRow}</text>
+      <text fg={FAINT}>{"    14 days ago" + " ".repeat(Math.max(1, axisW - 19)) + "today"}</text>
     </box>
   );
 }
@@ -1174,41 +1176,67 @@ function NowPlaying() {
     };
   }, []);
   if (!state || !state.configured) return null;
-  const t = state.track;
-  return (
-    <Stat label={state.isPlaying ? "NOW PLAYING" : "LAST PLAYED"}>
-      {t && t.name ? (
-        <box style={{ flexDirection: "column" }}>
-          <text bg={PANEL}>
-            <span fg={ACCENT}>{"♫ "}</span>
-            <span fg={INK}>{truncate(t.name, 40)}</span>
-            <span fg={MUTED}>{t.artists.length ? `  —  ${truncate(t.artists.join(", "), 28)}` : ""}</span>
-          </text>
-          {state.isPlaying && state.progressMs != null && state.durationMs ? (
-            <ProgressBar progress={state.progressMs} duration={state.durationMs} />
-          ) : state.isPlaying ? (
-            <Equalizer />
-          ) : null}
-        </box>
-      ) : (
+  const playing = state.isPlaying && state.current ? state.current : null;
+  // playing → current + 2 previous; idle → 3 most-recent
+  const previous = state.recent
+    .filter((e) => !playing || e.track.name !== playing.name)
+    .slice(0, playing ? 2 : 3);
+  if (!playing && previous.length === 0) {
+    return (
+      <Stat label="RECENTLY PLAYED">
         <text bg={PANEL} fg={FAINT}>
           nothing recently
         </text>
-      )}
+      </Stat>
+    );
+  }
+  return (
+    <Stat label={playing ? "NOW PLAYING" : "RECENTLY PLAYED"}>
+      {playing ? (
+        <box style={{ flexDirection: "column" }}>
+          <text bg={PANEL}>
+            <span fg={ACCENT}>{"♫ "}</span>
+            <span fg={INK}>{truncate(playing.name, 34)}</span>
+            <span fg={MUTED}>{playing.artists.length ? `  —  ${truncate(playing.artists.join(", "), 22)}` : ""}</span>
+          </text>
+          {state.progressMs != null && state.durationMs ? (
+            <ProgressBar progress={state.progressMs} duration={state.durationMs} />
+          ) : (
+            <Equalizer />
+          )}
+        </box>
+      ) : null}
+      {previous.map((e, i) => (
+        <text key={i} bg={PANEL}>
+          <span fg={FAINT}>{"· "}</span>
+          <span fg={!playing && i === 0 ? INK : MUTED}>{truncate(e.track.name, 32)}</span>
+          <span fg={MUTED}>{e.track.artists.length ? ` — ${truncate(e.track.artists.join(", "), 18)}` : ""}</span>
+          {e.playedAt ? <span fg={FAINT}>{`  ${timeAgo(e.playedAt)}`}</span> : null}
+        </text>
+      ))}
     </Stat>
   );
 }
 
-// most-asked chat questions (counts only)
+// most-asked chat questions: the latest one + the most-frequent
 function TopAsked() {
-  const [asked] = useState(() => topQuestions(3));
-  if (asked.length === 0) return null;
+  const [recent] = useState(() => recentQuestion());
+  const [top] = useState(() => topQuestions(3));
+  const popular = top.filter((q) => q.text !== recent).slice(0, 2);
+  if (!recent && popular.length === 0) return null;
   return (
     <Stat label="ASKED">
-      {asked.map((q, i) => (
+      {recent ? (
+        <text bg={PANEL}>
+          <span fg={FAINT}>{"· "}</span>
+          <span fg={INK}>{truncate(recent, 36)}</span>
+          <span fg={FAINT}>{"  latest"}</span>
+        </text>
+      ) : null}
+      {popular.map((q, i) => (
         <text key={i} bg={PANEL}>
           <span fg={FAINT}>{"· "}</span>
-          <span fg={INK}>{truncate(q.text, 40)}</span>
+          <span fg={MUTED}>{truncate(q.text, 36)}</span>
           <span fg={FAINT}>{`  ×${q.count}`}</span>
         </text>
       ))}
@@ -1217,7 +1245,6 @@ function TopAsked() {
 }
 
 function Home({ visit }: { visit: VisitInfo }) {
-  const today = visit.daily[visit.daily.length - 1] ?? 0;
   return (
     <box style={{ flexDirection: "row", paddingLeft: 2, paddingTop: 2 }}>
       <box style={{ flexDirection: "column", width: 46 }}>
@@ -1225,9 +1252,7 @@ function Home({ visit }: { visit: VisitInfo }) {
         <Stat label="VISITORS">
           <text bg={PANEL}>
             <strong fg={ACCENT}>{`#${commas(visit.count)}`}</strong>
-            <span fg={FAINT}>{SEP}</span>
-            <span fg={INK}>{today}</span>
-            <span fg={MUTED}>{" today"}</span>
+            <span fg={MUTED}>{" total"}</span>
           </text>
           <box style={{ height: 1 }} />
           <VisitorChart data={visit.daily} />
