@@ -1,0 +1,57 @@
+# In-cluster Cloudflare Tunnel for xiao.sh.
+# Runs cloudflared as a pod (NOT a host LaunchAgent): a macOS GUI LaunchAgent
+# can't reach the colima vmnet IP (Local Network restriction -> "no route to host"),
+# so the tunnel lives in-cluster and reaches the service over cluster networking.
+#
+# The tunnel credentials are NOT in this file. Create the secret once from the
+# cloudflared creds json on the host:
+#   kubectl create secret generic cloudflared-creds -n xiao \
+#     --from-file=credentials.json=$HOME/.cloudflared/313adceb-f5f8-4548-9cdd-4207f5307acd.json
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudflared-config
+  namespace: xiao
+data:
+  config.yaml: |
+    tunnel: 313adceb-f5f8-4548-9cdd-4207f5307acd
+    credentials-file: /etc/cf/creds/credentials.json
+    no-autoupdate: true
+    ingress:
+      - hostname: xiao.sh
+        service: http://xiao.xiao.svc.cluster.local:80
+      - hostname: www.xiao.sh
+        service: http://xiao.xiao.svc.cluster.local:80
+      - service: http_status:404
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflared
+  namespace: xiao
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudflared
+  template:
+    metadata:
+      labels:
+        app: cloudflared
+    spec:
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:latest
+          args: ["tunnel", "--config", "/etc/cf/config/config.yaml", "run"]
+          volumeMounts:
+            - name: config
+              mountPath: /etc/cf/config
+            - name: creds
+              mountPath: /etc/cf/creds
+      volumes:
+        - name: config
+          configMap:
+            name: cloudflared-config
+        - name: creds
+          secret:
+            secretName: cloudflared-creds

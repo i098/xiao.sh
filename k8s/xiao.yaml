@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: xiao
+---
+# visit counter + saved chat sessions live under /app/.data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: xiao-data
+  namespace: xiao
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: xiao
+  namespace: xiao
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate # RWO volume, single writer
+  selector:
+    matchLabels:
+      app: xiao
+  template:
+    metadata:
+      labels:
+        app: xiao
+    spec:
+      containers:
+        - name: xiao
+          image: xiao.sh:latest
+          imagePullPolicy: Never # built locally into colima docker, which k3s uses
+          ports:
+            - name: web
+              containerPort: 8787
+            - name: ssh
+              containerPort: 2222
+          envFrom:
+            - secretRef:
+                name: xiao-env
+          env:
+            # WS upgrades are origin-checked; must match the public URL the browser uses.
+            - name: PUBLIC_ORIGIN
+              value: "https://xiao.sh"
+          volumeMounts:
+            - name: data
+              mountPath: /app/.data
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8787
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8787
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: "2"
+              memory: 1Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: xiao-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: xiao
+  namespace: xiao
+spec:
+  type: LoadBalancer # klipper-lb -> node IP (192.168.64.3)
+  selector:
+    app: xiao
+  ports:
+    - name: web
+      port: 80
+      targetPort: 8787
+    - name: ssh
+      port: 2222
+      targetPort: 2222
