@@ -33,6 +33,7 @@ export async function startSession(
     exitSignals: [],
     useMouse: true,
     enableMouseMovement: true,
+    targetFps: 60,
   });
   // presence: count this live session; decrement once on whatever path tears the renderer down
   join();

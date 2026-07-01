@@ -109,6 +109,7 @@ async function buildProfileContext() {
     `You are a portfolio assistant for ${profile.name}.`,
     "Only answer using the profile, project, and LinkedIn context below.",
     "If something is unknown, say it is not listed on this site. Keep answers concise and factual.",
+    "Answer in plain text only — no markdown, no ** or # formatting; this renders in a terminal.",
     "",
     "Profile:",
     `Name: ${profile.name}`,
@@ -162,9 +163,25 @@ function sotaScore(model: OpenRouterModel) {
   if (id.includes("deepseek-r1") || id.includes("deepseek-v3")) s += 20;
   if (id.includes("gemini-2.5")) s += 18;
   if (id.includes(":free")) s += 4;
+  // reasoning models burn the token budget on <think> and leak it into the answer —
+  // keep them at the back of the pool
+  if (/\br1\b|r1-|reason|think/i.test(id)) s -= 25;
   s += Math.min(12, Math.log2(Math.max(1, (model.context_length ?? 0) / 8192 + 1)) * 4);
   s += Math.min(8, (model.created ?? 0) / 1_000_000_000);
   return s;
+}
+
+// Reasoning models sometimes inline their scratchpad into content. Drop paired
+// <think> blocks, a truncated trailing block, and an orphaned leading close tag.
+function cleanAnswer(raw: string): string {
+  let s = raw.replace(/<think>[\s\S]*?<\/think>/gi, "");
+  const open = s.search(/<think>/i);
+  if (open !== -1) s = s.slice(0, open);
+  const close = s.search(/<\/think>/i);
+  if (close !== -1) s = s.slice(close + "</think>".length);
+  // models ignore the plain-text instruction half the time — drop markdown bold markers
+  s = s.replace(/\*\*(.+?)\*\*/g, "$1");
+  return s.trim();
 }
 
 async function fetchFreeModels(apiKey: string) {
@@ -248,14 +265,16 @@ export async function ask(messages: ChatMessage[]): Promise<AskResult> {
           models: rest.slice(0, MAX_OPENROUTER_FALLBACK_MODELS),
           provider: { allow_fallbacks: true },
           temperature: 0.2,
-          max_tokens: 300,
+          // no max_tokens: let the model run to its natural stop — the system prompt
+          // already asks for concise answers. exclude keeps reasoning out of content.
+          reasoning: { exclude: true },
           stream: false,
           messages: payload,
         }),
       });
       const data = (await res.json()) as OpenRouterResponse;
       if (res.ok && !data.error) {
-        const answer = data.choices?.[0]?.message?.content?.trim();
+        const answer = cleanAnswer(data.choices?.[0]?.message?.content ?? "");
         if (answer) return { answer, model: data.model ?? primary };
         lastError = "OpenRouter returned empty content.";
       } else {

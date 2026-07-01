@@ -11,7 +11,7 @@ const linkedIn = await getLinkedInSnapshot();
 const visit = recordVisit();
 const distinctId = randomUUID();
 capture(distinctId, "visit", { count: visit.count });
-const renderer = await createCliRenderer({ exitOnCtrlC: false, useMouse: true, enableMouseMovement: true });
+const renderer = await createCliRenderer({ exitOnCtrlC: false, useMouse: true, enableMouseMovement: true, targetFps: 60 });
 createRoot(renderer).render(
   <App
     linkedIn={linkedIn}

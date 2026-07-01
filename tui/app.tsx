@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react";
-import { TextAttributes } from "@opentui/core";
+import { RGBA, TextAttributes, type OptimizedBuffer } from "@opentui/core";
 import { profile } from "@/lib/profile";
 import { projects, type Project } from "@/lib/projects";
 import { ask, type ChatMessage } from "@/lib/ai";
@@ -21,8 +21,9 @@ const MUTED = "#7c8a82";
 const FAINT = "#2c3531";
 const SEL_BG = "#15211b";
 const ERR = "#fda4af";
-// opaque strip behind text so the koi pond doesn't bleed through the spaces between words
-const PANEL = "#070d0c";
+// opaque strip behind text so the koi pond doesn't bleed through the spaces between words.
+// matches the terminal bg (deep green) so the strips stay seamless.
+const PANEL = "#030c0d";
 
 const LIST_W = 30;
 
@@ -62,9 +63,11 @@ function compactLanguage(value: string) {
 }
 
 // tight dashed rules (no solid lines anywhere)
+// wrapMode none + explicit height: a text that exactly fills the terminal width
+// measures as 2 wrapped rows (opentui edge case), overflowing tight column layouts
 function Rule({ w }: { w?: number }) {
   const { width } = useTerminalDimensions();
-  return <text fg={FAINT}>{"-".repeat(Math.max(1, w ?? width))}</text>;
+  return <text fg={FAINT} wrapMode="none" style={{ height: 1 }}>{"-".repeat(Math.max(1, w ?? width))}</text>;
 }
 function VRule({ rows }: { rows: number }) {
   return (
@@ -310,6 +313,8 @@ export default function App({
 
   // full-screen koi pond shared state (rendered behind all content)
   const { width: termW, height: termH } = useTerminalDimensions();
+  // narrow viewport (phones / small terminals): stack columns + compact footer
+  const narrow = termW < 64;
   const pondMouse = useRef<{ x: number; y: number } | null>(null);
   const pondSplash = useRef<{ x: number; y: number; amp: number }[]>([]);
   const pondMoveN = useRef(0);
@@ -498,21 +503,23 @@ export default function App({
       style={{ width: "100%", height: "100%" }}
       onMouseMove={(e: { x: number; y: number }) => {
         pondMouse.current = { x: e.x, y: e.y };
-        if (pondMoveN.current++ % 2 === 0) pondSplash.current.push({ x: e.x, y: e.y, amp: 2.2 });
+        // cap the queue so a fast cursor can't stockpile splash energy between wave ticks
+        if (pondMoveN.current++ % 2 === 0 && pondSplash.current.length < 64) pondSplash.current.push({ x: e.x, y: e.y, amp: 2.2 });
       }}
       onMouseDown={(e: { x: number; y: number }) => {
-        pondSplash.current.push({ x: e.x, y: e.y, amp: 6 });
+        if (pondSplash.current.length < 64) pondSplash.current.push({ x: e.x, y: e.y, amp: 6 });
       }}
       onMouseOut={() => {
         pondMouse.current = null;
       }}
     >
-      <KoiPond width={termW} height={termH} mouseRef={pondMouse} splashRef={pondSplash} />
+      {/* smaller koi on a phone so they don't bleed through the sparse, narrow content */}
+      <KoiPond width={termW} height={termH} scale={narrow ? 0.5 : 1} mouseRef={pondMouse} splashRef={pondSplash} />
       <box style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%", flexDirection: "column", zIndex: 1 }}>
         <Header screen={screen} />
         <box style={{ flexGrow: 1, flexDirection: "column" }}>
-          {screen === "home" && <Home visit={visit} />}
-          {screen === "projects" && <Projects selected={selected} />}
+          {screen === "home" && <Home visit={visit} narrow={narrow} />}
+          {screen === "projects" && <Projects selected={selected} onSelect={setSelected} />}
           {screen === "about" && <About linkedIn={linkedIn} />}
           {screen === "chat" && (
             <Chat
@@ -527,7 +534,7 @@ export default function App({
             />
           )}
         </box>
-        <Footer screen={screen} chatActive={chatActive} />
+        <Footer screen={screen} chatActive={chatActive} narrow={narrow} onNav={go} />
       </box>
       {picker && (
         <ResumePicker items={picker.items} index={picker.index} mode={picker.mode} width={termW} height={termH} />
@@ -553,62 +560,88 @@ function Header({ screen }: { screen: Screen }) {
   );
 }
 
-function Footer({ screen, chatActive }: { screen: Screen; chatActive: boolean }) {
+// one footer nav item — a tappable box (touch nav on mobile) that also shows the key hint
+function NavTab({ item, active, onNav }: { item: { key: string; screen: Screen }; active: boolean; onNav: (s: Screen) => void }) {
+  return (
+    <box
+      style={{ paddingRight: 2 }}
+      onMouseDown={() => {
+        if (!active) onNav(item.screen);
+      }}
+    >
+      <text>
+        <span fg={ACCENT}>{item.key}</span>
+        <span fg={active ? INK : MUTED}>{` ${item.screen}`}</span>
+      </text>
+    </box>
+  );
+}
+
+function Footer({
+  screen,
+  chatActive,
+  narrow,
+  onNav,
+}: {
+  screen: Screen;
+  chatActive: boolean;
+  narrow: boolean;
+  onNav: (s: Screen) => void;
+}) {
   const hint = chatActive ? "Enter send · Esc back" : screen === "projects" ? "↑↓ / j k move · q quit" : "q quit";
   return (
-    <box style={{ flexDirection: "column" }}>
+    <box style={{ flexDirection: "column", paddingBottom: 1 }}>
       <Rule />
       <box style={{ flexDirection: "row", justifyContent: "space-between", paddingLeft: 2, paddingRight: 2 }}>
-        <text>
+        <box style={{ flexDirection: "row" }}>
           {NAV.map((n) => (
-            <span key={n.key}>
-              <span fg={ACCENT}>{n.key}</span>
-              <span fg={n.screen === screen ? INK : MUTED}>{` ${n.screen}   `}</span>
-            </span>
+            <NavTab key={n.key} item={n} active={n.screen === screen} onNav={onNav} />
           ))}
-        </text>
-        <text fg={MUTED}>{hint}</text>
+        </box>
+        {!narrow && <text fg={MUTED}>{hint}</text>}
       </box>
     </box>
   );
 }
 
-type Cell = { ch: string; c: string };
+// The pond paints straight into the renderer's cell buffers (raw typed-array views over
+// native memory — zero FFI, zero React reconciliation per frame). All colors are
+// precomputed once as the 4×u16 RGBA quads the native buffer stores.
+const u16 = (hex: string) => RGBA.fromHex(hex).buffer;
 
-// water surface as ascii, by wave amplitude (height-field magnitude)
-// signed height -> glyph by amplitude, color by intensity AND sign (crest = bright cyan,
-// trough = deep blue) for clear wave color contrast
-function waterCell(v: number): Cell {
-  const a = v < 0 ? -v : v;
-  if (a < 0.07) return { ch: " ", c: "#0e2329" };
-  const crest = v > 0;
-  if (a > 0.6) return { ch: "≈", c: crest ? "#cdf2ff" : "#356fa6" };
-  if (a > 0.32) return { ch: "~", c: crest ? "#86d6ec" : "#2c5f8c" };
-  if (a > 0.16) return { ch: "˙", c: crest ? "#52a0b6" : "#274f72" };
-  return { ch: "·", c: crest ? "#2f6b7a" : "#1d3c55" };
-}
+// water surface: amplitude bucket -> glyph codepoint; color by intensity AND sign
+// (crest = bright cyan, trough = deep blue) for clear wave color contrast.
+const WATER_CP = [0x20, 0xb7 /*·*/, 0x2d9 /*˙*/, 0x7e /*~*/, 0x2248 /*≈*/];
+const WATER_CREST = [u16("#0e2329"), u16("#2f6b7a"), u16("#52a0b6"), u16("#86d6ec"), u16("#cdf2ff")];
+const WATER_TROUGH = [u16("#0e2329"), u16("#1d3c55"), u16("#274f72"), u16("#2c5f8c"), u16("#356fa6")];
+const POND_BG = u16(PANEL); // matches the terminal bg so the pond stays seamless
 
+// koi/lily palette — pixel buffer stores palette indices (0 = transparent)
+const C_WHITE = 1; // body base
+const C_FIN = 2;
+const C_ORANGE = 3;
+const C_RED = 4;
+const C_EYE = 5;
+const C_SUMI = 6; // Sanke's small black markings — dark slate
+const C_PAD = 7;
+const C_PETAL = 8;
+const C_FLOWER = 9;
+const PAL_U16: Uint16Array[] = [
+  new Uint16Array(4),
+  u16("#eef2f5"),
+  u16("#cdd6dc"),
+  u16("#ff8a3d"),
+  u16("#d94f28"),
+  u16("#0c1016"),
+  u16("#333c47"),
+  u16("#3f6e3a"),
+  u16("#f3a8c8"),
+  u16("#f2d36b"),
+];
 // koi rendered as ascii glyphs (not solid blocks), shaded by body coverage
-function koiGlyph(count: number, color: string): string {
-  if (color === EYE) return "•";
-  return count === 2 ? "#" : "*";
-}
-
-// Pixel-art koi (top-down). Each char = one pixel; rendered with half-block ▀
-// (top px = fg, bottom px = bg) so it has true 2x vertical resolution + correct aspect.
-// W/w white body · o/r orange-red kohaku patches · b blue fins · k black eye · . transparent.
-const KOI_PALETTE: Record<string, string> = {
-  W: "#eef2f5",
-  w: "#cdd6dc",
-  o: "#ff8a3d",
-  r: "#d94f28",
-  b: "#6f93cf",
-  k: "#0c1016",
-};
-const WHITE = KOI_PALETTE.W;
-const ORANGE = KOI_PALETTE.o;
-const RED = KOI_PALETTE.r;
-const EYE = KOI_PALETTE.k;
+const CP_FULL = 0x23; // '#' both pixels covered
+const CP_HALF = 0x2a; // '*'
+const CP_EYE = 0x2022; // '•'
 const N_COILS = 12;
 const COIL_SP = 3.0; // px between body coils (shorter body = less snake-like)
 const MAX_BEND = 0.22; // max bend per joint (rad) — keeps the body fish-stiff, not snake-curly
@@ -620,19 +653,38 @@ function coilRadius(i: number, size = 1) {
   const t = i / (N_COILS - 1);
   return (1.0 + 3.7 * Math.sin(t * Math.PI) + (t < 0.16 ? 0.8 : 0)) * size;
 }
-// irregular kohaku blotches on the white body (i, color, size ratio, side offset)
-const KOI_BLOTCHES: { i: number; col: string; dr: number; off: number }[] = [
-  { i: 2, col: ORANGE, dr: 0.6, off: -0.4 },
-  { i: 4, col: RED, dr: 0.75, off: 0.2 },
-  { i: 6, col: ORANGE, dr: 0.55, off: 0.45 },
-  { i: 8, col: RED, dr: 0.5, off: -0.35 },
+// a blotch: which spine coil, palette color, size ratio of the body radius, sideways offset
+type Blotch = { i: number; col: number; dr: number; off: number };
+// one koi variety: body base color, fin color, and its overlaid blotches
+type KoiVariety = { name: string; base: number; fin: number; blotches: Blotch[] };
+const KOI_VARIETIES: KoiVariety[] = [
+  // Kōhaku — white body, large red/orange markings
+  {
+    name: "kohaku",
+    base: C_WHITE,
+    fin: C_FIN,
+    blotches: [
+      { i: 3, col: C_RED, dr: 0.95, off: -0.2 },
+      { i: 6, col: C_ORANGE, dr: 0.8, off: 0.3 },
+      { i: 9, col: C_RED, dr: 0.7, off: -0.3 },
+    ],
+  },
+  // Sanke — white base, red plus small black markings
+  {
+    name: "sanke",
+    base: C_WHITE,
+    fin: C_FIN,
+    blotches: [
+      { i: 3, col: C_RED, dr: 0.9, off: -0.15 },
+      { i: 6, col: C_RED, dr: 0.7, off: 0.35 },
+      { i: 5, col: C_SUMI, dr: 0.42, off: -0.55 },
+      { i: 8, col: C_SUMI, dr: 0.36, off: 0.45 },
+    ],
+  },
 ];
 
 // lily pads (fractions of pond w/h, radius px) — drawn above koi, below text.
 // each has a wedge slice removed (notch center angle + half-width); one bears a flower.
-const PAD = "#3f6e3a";
-const PAD_PETAL = "#f3a8c8";
-const PAD_FLOWER_CENTER = "#f2d36b";
 const LILY_PADS = [
   { fx: 0.86, fy: 0.2, r: 10, notch: 2.4, notchW: 0.4, flower: true }, // top-right (acute slice)
   { fx: 0.88, fy: 0.82, r: 11, notch: -2.3, notchW: 0.45, flower: false }, // bottom-right
@@ -648,19 +700,85 @@ type KoiState = {
   ax: number;
   ay: number;
   ph: number;
+  variety: KoiVariety;
   spine: { x: number; y: number }[];
 };
 
+// Wave-propagation hot loop. Plain JS: JSC's JIT vectorises this tight typed-array
+// loop and there's no per-frame FFI marshalling (which added steady small GC hitches).
+// Writes the next field into `prev` from `cur`'s neighbours; caller swaps.
+// Anisotropic: horizontal coupling 4x vertical (terminal cells are ~2:1 tall) so a
+// ripple renders as a circle on screen instead of a vertical ellipse.
+function waveStep(cur: Float32Array, prev: Float32Array, w: number, h: number, damp: number): void {
+  for (let y = 1; y < h - 1; y += 1) {
+    const row = y * w;
+    for (let x = 1; x < w - 1; x += 1) {
+      const i = row + x;
+      prev[i] = (0.75 * cur[i] - prev[i] + 0.5 * (cur[i - 1] + cur[i + 1]) + 0.125 * (cur[i - w] + cur[i + w])) * damp;
+    }
+  }
+}
+
+// pixel-raster helpers over the koi half-block buffer (palette indices, 0 = transparent)
+function diskPx(buf: Uint8Array, pw: number, ph: number, cx: number, cy: number, r: number, col: number): void {
+  const r2 = r * r;
+  const y0 = Math.max(0, Math.floor(cy - r));
+  const y1 = Math.min(ph - 1, Math.ceil(cy + r));
+  const x0 = Math.max(0, Math.floor(cx - r));
+  const x1 = Math.min(pw - 1, Math.ceil(cx + r));
+  for (let yy = y0; yy <= y1; yy += 1)
+    for (let xx = x0; xx <= x1; xx += 1) {
+      const dx = xx - cx;
+      const dy = yy - cy;
+      if (dx * dx + dy * dy <= r2) buf[yy * pw + xx] = col;
+    }
+}
+function triPx(
+  buf: Uint8Array,
+  pw: number,
+  ph: number,
+  ax2: number,
+  ay2: number,
+  bx2: number,
+  by2: number,
+  cx3: number,
+  cy3: number,
+  col: number,
+): void {
+  const minx = Math.max(0, Math.floor(Math.min(ax2, bx2, cx3)));
+  const maxx = Math.min(pw - 1, Math.ceil(Math.max(ax2, bx2, cx3)));
+  const miny = Math.max(0, Math.floor(Math.min(ay2, by2, cy3)));
+  const maxy = Math.min(ph - 1, Math.ceil(Math.max(ay2, by2, cy3)));
+  const den = (by2 - cy3) * (ax2 - cx3) + (cx3 - bx2) * (ay2 - cy3);
+  if (Math.abs(den) < 1e-6) return;
+  for (let yy = miny; yy <= maxy; yy += 1)
+    for (let xx = minx; xx <= maxx; xx += 1) {
+      const w1 = ((by2 - cy3) * (xx - cx3) + (cx3 - bx2) * (yy - cy3)) / den;
+      const w2 = ((cy3 - ay2) * (xx - cx3) + (ax2 - cx3) * (yy - cy3)) / den;
+      if (w1 >= 0 && w2 >= 0 && w1 + w2 <= 1) buf[yy * pw + xx] = col;
+    }
+}
+function setPx(buf: Uint8Array, pw: number, ph: number, x: number, y: number, col: number): void {
+  const xi = Math.round(x);
+  const yi = Math.round(y);
+  if (xi >= 0 && yi >= 0 && xi < pw && yi < ph) buf[yi * pw + xi] = col;
+}
+
 // Full-screen koi pond behind all content; koi swim in from the edges, flee the cursor;
 // cursor/koi leave wave-sim ripples. Mouse + splashes are fed in from the App root.
-function KoiPond({
+// Rendered as a `live` box that paints directly into the renderer's cell buffers each
+// frame (renderAfter) — no per-frame React state/reconciliation, so cost is flat no
+// matter how choppy the water or how much the koi overlap.
+export function KoiPond({
   width,
   height,
+  scale = 1,
   mouseRef,
   splashRef,
 }: {
   width: number;
   height: number;
+  scale?: number;
   mouseRef: { current: { x: number; y: number } | null };
   splashRef: { current: { x: number; y: number; amp: number }[] };
 }) {
@@ -671,67 +789,69 @@ function KoiPond({
   const koi = useRef<KoiState[]>([]);
   const hCur = useRef<Float32Array | null>(null);
   const hPrev = useRef<Float32Array | null>(null);
-  const [, force] = useState(0);
+  // koi pixel scratch buffer reused every frame (allocated once per size)
+  const pxRef = useRef<Uint8Array | null>(null);
+  const waveAcc = useRef(0);
 
   if (!hCur.current || hCur.current.length !== W * H) {
     hCur.current = new Float32Array(W * H);
     hPrev.current = new Float32Array(W * H);
   }
-  function splash(x: number, y: number, amp: number) {
-    const xi = Math.round(x);
-    const yi = Math.round(y);
-    if (xi < 1 || yi < 1 || xi >= W - 1 || yi >= H - 1) return;
-    hCur.current![yi * W + xi] -= amp;
+  if (!pxRef.current || pxRef.current.length !== PW * PH) {
+    pxRef.current = new Uint8Array(PW * PH);
   }
 
-  useEffect(() => {
-    const margin = 12;
-    // each koi swims its own wandering loop (own center / amplitude / phase / speed)
-    function leadFor(k: KoiState, s: number) {
-      return {
-        x: clamp(k.cx + k.ax * Math.sin(s + k.ph) + k.ax * 0.33 * Math.sin(2.7 * s + k.ph + 1.3), margin, PW - margin),
-        y: clamp(k.cy + k.ay * Math.cos(0.9 * s + k.ph) + k.ay * 0.42 * Math.sin(1.6 * s + k.ph + 0.5), margin, PH - margin),
-      };
-    }
-    if (koi.current.length === 0) {
-      const defs: Omit<KoiState, "s" | "spine">[] = [
-        { spd: 0.018, size: 1.0, cx: PW * 0.42, cy: PH * 0.5, ax: PW * 0.3, ay: PH * 0.26, ph: 0 },
-        { spd: 0.023, size: 0.8, cx: PW * 0.6, cy: PH * 0.42, ax: PW * 0.24, ay: PH * 0.22, ph: 2.1 },
-        { spd: 0.015, size: 0.62, cx: PW * 0.5, cy: PH * 0.62, ax: PW * 0.33, ay: PH * 0.2, ph: 4.2 },
-      ];
-      koi.current = defs.map((d) => {
-        const k: KoiState = { ...d, s: d.ph, spine: [] };
-        // start just off a random edge, body trailing further off-screen → swims in
-        const edge = Math.floor(Math.random() * 4);
-        let hx = 0;
-        let hy = 0;
-        let dx = 0;
-        let dy = 0;
-        if (edge === 0) {
-          hx = Math.random() * PW;
-          hy = -3;
-          dy = -1;
-        } else if (edge === 1) {
-          hx = Math.random() * PW;
-          hy = PH + 3;
-          dy = 1;
-        } else if (edge === 2) {
-          hx = -3;
-          hy = Math.random() * PH;
-          dx = -1;
-        } else {
-          hx = PW + 3;
-          hy = Math.random() * PH;
-          dx = 1;
-        }
-        k.spine = Array.from({ length: N_COILS }, (_, i) => ({ x: hx + dx * i * COIL_SP, y: hy + dy * i * COIL_SP }));
-        return k;
-      });
-    }
-    const id = setInterval(() => {
+  const draw = useCallback(
+    (buffer: OptimizedBuffer, deltaMs: number) => {
+      const margin = 12;
+      // each koi swims its own wandering loop (own center / amplitude / phase / speed)
+      function leadFor(k: KoiState, s: number) {
+        return {
+          x: clamp(k.cx + k.ax * Math.sin(s + k.ph) + k.ax * 0.33 * Math.sin(2.7 * s + k.ph + 1.3), margin, PW - margin),
+          y: clamp(k.cy + k.ay * Math.cos(0.9 * s + k.ph) + k.ay * 0.42 * Math.sin(1.6 * s + k.ph + 0.5), margin, PH - margin),
+        };
+      }
+      if (koi.current.length === 0) {
+        const defs: Omit<KoiState, "s" | "spine">[] = [
+          { spd: 0.018, size: 1.0, cx: PW * 0.42, cy: PH * 0.5, ax: PW * 0.3, ay: PH * 0.26, ph: 0, variety: KOI_VARIETIES[0] },
+          { spd: 0.023, size: 0.8, cx: PW * 0.6, cy: PH * 0.42, ax: PW * 0.24, ay: PH * 0.22, ph: 2.1, variety: KOI_VARIETIES[1] },
+        ];
+        koi.current = defs.map((d) => {
+          const k: KoiState = { ...d, size: d.size * scale, s: d.ph, spine: [] };
+          // start just off a random edge, body trailing further off-screen → swims in
+          const edge = Math.floor(Math.random() * 4);
+          let hx = 0;
+          let hy = 0;
+          let dx = 0;
+          let dy = 0;
+          if (edge === 0) {
+            hx = Math.random() * PW;
+            hy = -3;
+            dy = -1;
+          } else if (edge === 1) {
+            hx = Math.random() * PW;
+            hy = PH + 3;
+            dy = 1;
+          } else if (edge === 2) {
+            hx = -3;
+            hy = Math.random() * PH;
+            dx = -1;
+          } else {
+            hx = PW + 3;
+            hy = Math.random() * PH;
+            dx = 1;
+          }
+          k.spine = Array.from({ length: N_COILS }, (_, i) => ({ x: hx + dx * i * COIL_SP, y: hy + dy * i * COIL_SP }));
+          return k;
+        });
+      }
+      // koi kinematics run per frame; physics constants were tuned at a 33ms tick, so
+      // `n` rescales the increments — 60fps doesn't double swim speed.
+      const n = Math.min(deltaMs, 100) / 33;
+      const ease = 1 - Math.pow(0.84, n); // 0.16 per 33ms tick
       const m = mouseRef.current;
       for (const k of koi.current) {
-        k.s += k.spd;
+        k.s += k.spd * n;
         const target = leadFor(k, k.s);
         const head = k.spine[0];
         if (m) {
@@ -767,13 +887,13 @@ function KoiPond({
           }
         }
         // ease toward target but cap speed → natural constant-glide swim-in from edges
-        const ex = (target.x - head.x) * 0.16;
-        const ey = (target.y - head.y) * 0.16;
+        const ex = (target.x - head.x) * ease;
+        const ey = (target.y - head.y) * ease;
         const es = Math.hypot(ex, ey) || 1;
-        const maxStep = 1.1;
-        const scale = es > maxStep ? maxStep / es : 1;
-        head.x += ex * scale;
-        head.y += ey * scale;
+        const maxStep = 1.1 * n;
+        const stepScale = es > maxStep ? maxStep / es : 1;
+        head.x += ex * stepScale;
+        head.y += ey * stepScale;
         // follow chain with per-joint bend limit (fish-stiff, not snake-curly)
         for (let i = 1; i < N_COILS; i += 1) {
           const a = k.spine[i - 1];
@@ -792,215 +912,214 @@ function KoiPond({
           b.y = a.y + Math.sin(ang) * COIL_SP;
         }
       }
-      // water height-field: wave propagation + damping (double-buffered), once per frame
-      const cur = hCur.current!;
-      const prev = hPrev.current!;
-      for (let y = 1; y < H - 1; y += 1) {
-        const row = y * W;
-        for (let x = 1; x < W - 1; x += 1) {
-          const i = row + x;
-          let v = (cur[i - 1] + cur[i + 1] + cur[i - W] + cur[i + W]) / 2 - prev[i];
-          v *= 0.93; // more damping → tighter, smaller ripples
-          prev[i] = v;
+      // water height-field: wave propagation + damping (double-buffered) on a fixed
+      // 30Hz clock — the stencil's wave speed and damping are per-step, so stepping
+      // per frame would tie ripple physics to fps. 0.93 damping → tighter ripples.
+      const splashAt = (x: number, y: number, amp: number) => {
+        const xi = Math.round(x);
+        const yi = Math.round(y);
+        if (xi < 1 || yi < 1 || xi >= W - 1 || yi >= H - 1) return;
+        hCur.current![yi * W + xi] -= amp;
+      };
+      waveAcc.current += Math.min(deltaMs, 100);
+      let steps = 0;
+      while (waveAcc.current >= 33 && steps < 4) {
+        waveAcc.current -= 33;
+        steps += 1;
+        const cur = hCur.current!;
+        const prev = hPrev.current!;
+        waveStep(cur, prev, W, H, 0.93);
+        hCur.current = prev;
+        hPrev.current = cur;
+        // queued cursor splashes (fed from the App root mouse handler)
+        const q = splashRef.current;
+        for (let i = 0; i < q.length; i += 1) splashAt(q[i].x, q[i].y, q[i].amp);
+        q.length = 0;
+        // gentle koi wakes
+        for (const k of koi.current) {
+          splashAt(k.spine[0].x, k.spine[0].y / 2, 0.18);
+          splashAt(k.spine[N_COILS - 1].x, k.spine[N_COILS - 1].y / 2, 0.12);
         }
       }
-      hCur.current = prev;
-      hPrev.current = cur;
-      // queued cursor splashes (fed from the App root mouse handler)
-      const q = splashRef.current;
-      for (let i = 0; i < q.length; i += 1) splash(q[i].x, q[i].y, q[i].amp);
-      q.length = 0;
-      // gentle koi wakes
+      if (waveAcc.current >= 33) waveAcc.current = 0; // stalled — drop the backlog
+
+      // koi: rasterize the body chain into the pixel buffer (palette indices)
+      const buf = pxRef.current!;
+      buf.fill(0);
+      const disk = (cx2: number, cy2: number, r: number, col: number) => diskPx(buf, PW, PH, cx2, cy2, r, col);
+      const triFill = (ax2: number, ay2: number, bx2: number, by2: number, cx3: number, cy3: number, col: number) =>
+        triPx(buf, PW, PH, ax2, ay2, bx2, by2, cx3, cy3, col);
+      const setpx = (x: number, y: number, col: number) => setPx(buf, PW, PH, x, y, col);
+
       for (const k of koi.current) {
-        splash(k.spine[0].x, k.spine[0].y / 2, 0.18);
-        splash(k.spine[N_COILS - 1].x, k.spine[N_COILS - 1].y / 2, 0.12);
-      }
-      force((n) => (n + 1) & 0xffff);
-    }, 33);
-    return () => clearInterval(id);
-  }, [PW, PH]);
+        const spine = k.spine;
+        if (!spine.length) continue;
+        const size = k.size;
+        const v = k.variety;
 
-  // water surface from the height field
-  const field = hCur.current!;
-  const grid: Cell[][] = [];
-  for (let y = 0; y < H; y += 1) {
-    const row: Cell[] = [];
-    for (let x = 0; x < W; x += 1) row.push(waterCell(field[y * W + x]));
-    grid.push(row);
-  }
-  // koi: draw the body chain into a pixel buffer, then half-block composite onto the grid
-  {
-    const buf: (string | null)[] = new Array(PW * PH).fill(null);
-    const disk = (cx2: number, cy2: number, r: number, col: string) => {
-      const r2 = r * r;
-      const y0 = Math.max(0, Math.floor(cy2 - r));
-      const y1 = Math.min(PH - 1, Math.ceil(cy2 + r));
-      const x0 = Math.max(0, Math.floor(cx2 - r));
-      const x1 = Math.min(PW - 1, Math.ceil(cx2 + r));
-      for (let yy = y0; yy <= y1; yy += 1)
-        for (let xx = x0; xx <= x1; xx += 1) {
-          const dx = xx - cx2;
-          const dy = yy - cy2;
-          if (dx * dx + dy * dy <= r2) buf[yy * PW + xx] = col;
+        // body: variety base color + its overlaid blotches (no full-width stripes)
+        for (let i = N_COILS - 1; i >= 0; i -= 1) disk(spine[i].x, spine[i].y, coilRadius(i, size), v.base);
+        for (const b of v.blotches) {
+          const c = spine[b.i];
+          const cp = spine[b.i - 1];
+          const dl = Math.hypot(c.x - cp.x, c.y - cp.y) || 1;
+          const ppx = -(c.y - cp.y) / dl;
+          const ppy = (c.x - cp.x) / dl;
+          const r = coilRadius(b.i, size);
+          disk(c.x + ppx * b.off * r, c.y + ppy * b.off * r, r * b.dr, b.col);
         }
-    };
-    const triFill = (ax2: number, ay2: number, bx2: number, by2: number, cx3: number, cy3: number, col: string) => {
-      const minx = Math.max(0, Math.floor(Math.min(ax2, bx2, cx3)));
-      const maxx = Math.min(PW - 1, Math.ceil(Math.max(ax2, bx2, cx3)));
-      const miny = Math.max(0, Math.floor(Math.min(ay2, by2, cy3)));
-      const maxy = Math.min(PH - 1, Math.ceil(Math.max(ay2, by2, cy3)));
-      const den = (by2 - cy3) * (ax2 - cx3) + (cx3 - bx2) * (ay2 - cy3);
-      if (Math.abs(den) < 1e-6) return;
-      for (let yy = miny; yy <= maxy; yy += 1)
-        for (let xx = minx; xx <= maxx; xx += 1) {
-          const w1 = ((by2 - cy3) * (xx - cx3) + (cx3 - bx2) * (yy - cy3)) / den;
-          const w2 = ((cy3 - ay2) * (xx - cx3) + (ax2 - cx3) * (yy - cy3)) / den;
-          if (w1 >= 0 && w2 >= 0 && w1 + w2 <= 1) buf[yy * PW + xx] = col;
+
+        // tail: a short forked caudal fin, then long thin whiskers trailing from each lobe
+        // tip. The whiskers run ~half the body length and undulate in sync with the swim
+        // (same wavyness as the fish) — only the whisker ends are long, not the whole fin.
+        const t0 = spine[N_COILS - 1];
+        const t1 = spine[N_COILS - 2];
+        const tl = Math.hypot(t0.x - t1.x, t0.y - t1.y) || 1;
+        const ux = (t0.x - t1.x) / tl; // backward, away from the head
+        const uy = (t0.y - t1.y) / tl;
+        const px = -uy; // lateral (perpendicular to the body axis)
+        const py = ux;
+        const bx0 = t0.x + ux * 1.6 * size;
+        const by0 = t0.y + uy * 1.6 * size;
+        const swim = k.s * 7; // shared swim phase → tail + whiskers share the body's wavyness
+        const sway = Math.sin(swim) * 3.0 * size;
+        const finLenT = 5 * size; // the solid fork stays short
+        const whiskLen = N_COILS * COIL_SP * 0.35 * size; // whiskers ~a third of the fish length
+        for (const lobe of [1, -1]) {
+          const spread = lobe * 3.2 * size + sway;
+          const apx = bx0 + ux * finLenT + px * spread;
+          const apy = by0 + uy * finLenT + py * spread;
+          triFill(bx0 + px * 0.7, by0 + py * 0.7, bx0 - px * 0.7, by0 - py * 0.7, apx, apy, v.base);
+          // wavy whisker from the lobe tip: the wave LAGS along the length (`- f`) so the tip
+          // trails behind the tail's swing instead of leading against the fish's motion.
+          for (let s2 = 1; s2 <= 12; s2 += 1) {
+            const f = s2 / 12;
+            const along = f * whiskLen;
+            const wave = Math.sin(swim - f * 3.5) * 2.4 * size * f; // amplitude grows toward the tip
+            const wx = apx + ux * along + px * wave;
+            const wy = apy + uy * along + py * wave;
+            disk(wx, wy, Math.max(0.4, (1 - f) * 1.0 * size + 0.3), v.fin);
+          }
         }
-    };
-    const setpx = (x: number, y: number, col: string) => {
-      const xi = Math.round(x);
-      const yi = Math.round(y);
-      if (xi >= 0 && yi >= 0 && xi < PW && yi < PH) buf[yi * PW + xi] = col;
-    };
 
-    for (const k of koi.current) {
-      const spine = k.spine;
-      if (!spine.length) continue;
-      const size = k.size;
-
-      // body: white base + irregular kohaku blotches (no full-width stripes)
-      for (let i = N_COILS - 1; i >= 0; i -= 1) disk(spine[i].x, spine[i].y, coilRadius(i, size), WHITE);
-      for (const b of KOI_BLOTCHES) {
-        const c = spine[b.i];
-        const cp = spine[b.i - 1];
-        const dl = Math.hypot(c.x - cp.x, c.y - cp.y) || 1;
-        const ppx = -(c.y - cp.y) / dl;
-        const ppy = (c.x - cp.x) / dl;
-        const r = coilRadius(b.i, size);
-        disk(c.x + ppx * b.off * r, c.y + ppy * b.off * r, r * b.dr, b.col);
-      }
-
-      // tail: distinct forked fin, set off by a gap, swaying
-      const t0 = spine[N_COILS - 1];
-      const t1 = spine[N_COILS - 2];
-      const tl = Math.hypot(t0.x - t1.x, t0.y - t1.y) || 1;
-      const ux = (t0.x - t1.x) / tl;
-      const uy = (t0.y - t1.y) / tl;
-      const bx0 = t0.x + ux * 1.6 * size;
-      const by0 = t0.y + uy * 1.6 * size;
-      const sway = Math.sin(k.s * 7) * 3.2 * size;
-      const tailLen = 6 * size;
-      for (const lobe of [1, -1]) {
-        const spread = lobe * 3.4 * size + sway;
-        const apx = bx0 + ux * tailLen + -uy * spread;
-        const apy = by0 + uy * tailLen + ux * spread;
-        triFill(bx0 + -uy * 0.7, by0 + ux * 0.7, bx0 - -uy * 0.7, by0 - ux * 0.7, apx, apy, WHITE);
-      }
-
-      // pectoral fins: triangles swept back toward the tail
-      const mi = 3;
-      const mc = spine[mi];
-      const mp = spine[mi - 1];
-      const ml = Math.hypot(mc.x - mp.x, mc.y - mp.y) || 1;
-      const tx = (mc.x - mp.x) / ml;
-      const ty = (mc.y - mp.y) / ml;
-      const fpx = -ty;
-      const fpy = tx;
-      const flap = 1 + Math.sin(k.s * 5 + 1) * 0.35;
-      const r0 = coilRadius(mi, size);
-      const finLen = 6 * size;
-      const finOut = 4.5 * flap * size;
-      for (const side of [1, -1]) {
-        const rfx = mc.x + fpx * side * r0 * 0.7 - tx * 2;
-        const rfy = mc.y + fpy * side * r0 * 0.7 - ty * 2;
-        const rbx = mc.x + fpx * side * r0 * 0.7;
-        const rby = mc.y + fpy * side * r0 * 0.7;
-        const tipx = mc.x + tx * finLen + fpx * side * (r0 + finOut);
-        const tipy = mc.y + ty * finLen + fpy * side * (r0 + finOut);
-        triFill(rfx, rfy, rbx, rby, tipx, tipy, KOI_PALETTE.w);
-      }
-
-      // eyes near the head
-      const h0 = spine[0];
-      const h1 = spine[1];
-      const hl = Math.hypot(h0.x - h1.x, h0.y - h1.y) || 1;
-      const epx = -(h0.y - h1.y) / hl;
-      const epy = (h0.x - h1.x) / hl;
-      const eo = 1.7 * size;
-      setpx(h0.x + epx * eo, h0.y + epy * eo, EYE);
-      setpx(h0.x - epx * eo, h0.y - epy * eo, EYE);
-    }
-
-    // lily pads: drawn AFTER koi (so koi swim under them), gently bobbing, with a flower
-    const padTime = koi.current[0]?.s ?? 0;
-    LILY_PADS.forEach((p, i) => {
-      const cxp = p.fx * PW;
-      const cyp = p.fy * PH + Math.sin(padTime * 1.4 + i) * 0.35;
-      // draw the pad as a disk MINUS the wedge — the notch is never painted, so koi
-      // (drawn earlier) stay visible through the cut instead of being erased
-      const r2 = p.r * p.r;
-      const y0 = Math.max(0, Math.floor(cyp - p.r));
-      const y1 = Math.min(PH - 1, Math.ceil(cyp + p.r));
-      const x0 = Math.max(0, Math.floor(cxp - p.r));
-      const x1 = Math.min(PW - 1, Math.ceil(cxp + p.r));
-      for (let yy = y0; yy <= y1; yy += 1)
-        for (let xx = x0; xx <= x1; xx += 1) {
-          const dx = xx - cxp;
-          const dy = yy - cyp;
-          if (dx * dx + dy * dy > r2) continue;
-          let diff = Math.atan2(dy, dx) - p.notch;
-          while (diff > Math.PI) diff -= 2 * Math.PI;
-          while (diff < -Math.PI) diff += 2 * Math.PI;
-          if (Math.abs(diff) < p.notchW) continue; // skip the wedge → leave koi/water
-          buf[yy * PW + xx] = PAD;
+        // pectoral fins: triangles swept back toward the tail
+        const mi = 3;
+        const mc = spine[mi];
+        const mp = spine[mi - 1];
+        const ml = Math.hypot(mc.x - mp.x, mc.y - mp.y) || 1;
+        const tx = (mc.x - mp.x) / ml;
+        const ty = (mc.y - mp.y) / ml;
+        const fpx = -ty;
+        const fpy = tx;
+        const flap = 1 + Math.sin(k.s * 5 + 1) * 0.35;
+        const r0 = coilRadius(mi, size);
+        const finLen = 6 * size;
+        const finOut = 4.5 * flap * size;
+        for (const side of [1, -1]) {
+          const rfx = mc.x + fpx * side * r0 * 0.7 - tx * 2;
+          const rfy = mc.y + fpy * side * r0 * 0.7 - ty * 2;
+          const rbx = mc.x + fpx * side * r0 * 0.7;
+          const rby = mc.y + fpy * side * r0 * 0.7;
+          const tipx = mc.x + tx * finLen + fpx * side * (r0 + finOut);
+          const tipy = mc.y + ty * finLen + fpy * side * (r0 + finOut);
+          triFill(rfx, rfy, rbx, rby, tipx, tipy, v.fin);
         }
-      // flower on the one designated pad: 5 petals + center
-      if (p.flower) {
-        for (let k = 0; k < 5; k += 1) {
-          const a = (k * 2 * Math.PI) / 5 - 1.2;
-          disk(cxp + Math.cos(a) * 2.4, cyp + Math.sin(a) * 2.4, 1.4, PAD_PETAL);
-        }
-        disk(cxp, cyp, 1.3, PAD_FLOWER_CENTER);
-      }
-    });
 
-    // ascii composite: one glyph per cell, shaded by coverage of its two pixels
-    for (let y = 0; y < H; y += 1)
-      for (let x = 0; x < W; x += 1) {
-        const top = buf[2 * y * PW + x];
-        const bot = buf[(2 * y + 1) * PW + x];
-        if (top || bot) {
-          const col = (top ?? bot) as string;
-          grid[y][x] = { ch: koiGlyph((top ? 1 : 0) + (bot ? 1 : 0), col), c: col };
+        // eyes near the head
+        const h0 = spine[0];
+        const h1 = spine[1];
+        const hl = Math.hypot(h0.x - h1.x, h0.y - h1.y) || 1;
+        const epx = -(h0.y - h1.y) / hl;
+        const epy = (h0.x - h1.x) / hl;
+        const eo = 1.7 * size;
+        setpx(h0.x + epx * eo, h0.y + epy * eo, C_EYE);
+        setpx(h0.x - epx * eo, h0.y - epy * eo, C_EYE);
+      }
+
+      // lily pads: drawn AFTER koi (so koi swim under them), gently bobbing, with a flower
+      const padTime = koi.current[0]?.s ?? 0;
+      LILY_PADS.forEach((p, i) => {
+        const cxp = p.fx * PW;
+        const cyp = p.fy * PH + Math.sin(padTime * 1.4 + i) * 0.35;
+        // draw the pad as a disk MINUS the wedge — the notch is never painted, so koi
+        // (drawn earlier) stay visible through the cut instead of being erased
+        const r2 = p.r * p.r;
+        const y0 = Math.max(0, Math.floor(cyp - p.r));
+        const y1 = Math.min(PH - 1, Math.ceil(cyp + p.r));
+        const x0 = Math.max(0, Math.floor(cxp - p.r));
+        const x1 = Math.min(PW - 1, Math.ceil(cxp + p.r));
+        for (let yy = y0; yy <= y1; yy += 1)
+          for (let xx = x0; xx <= x1; xx += 1) {
+            const dx = xx - cxp;
+            const dy = yy - cyp;
+            if (dx * dx + dy * dy > r2) continue;
+            let diff = Math.atan2(dy, dx) - p.notch;
+            while (diff > Math.PI) diff -= 2 * Math.PI;
+            while (diff < -Math.PI) diff += 2 * Math.PI;
+            if (Math.abs(diff) < p.notchW) continue; // skip the wedge → leave koi/water
+            buf[yy * PW + xx] = C_PAD;
+          }
+        // flower on the one designated pad: 5 petals + center
+        if (p.flower) {
+          for (let k = 0; k < 5; k += 1) {
+            const a = (k * 2 * Math.PI) / 5 - 1.2;
+            disk(cxp + Math.cos(a) * 2.4, cyp + Math.sin(a) * 2.4, 1.4, C_PETAL);
+          }
+          disk(cxp, cyp, 1.3, C_FLOWER);
+        }
+      });
+
+      // composite water + koi straight into the renderer's raw cell buffers: one glyph
+      // per cell, koi shaded by coverage of its two half-block pixels
+      const raw = buffer.buffers;
+      const bw = buffer.width;
+      const cw = Math.min(W, bw);
+      const chRows = Math.min(H, buffer.height);
+      const chB = raw.char;
+      const fgB = raw.fg;
+      const bgB = raw.bg;
+      const atB = raw.attributes;
+      const field = hCur.current!;
+      for (let y = 0; y < chRows; y += 1) {
+        const rowOff = y * bw;
+        const top0 = 2 * y * PW;
+        const bot0 = top0 + PW;
+        for (let x = 0; x < cw; x += 1) {
+          const top = buf[top0 + x];
+          const bot = buf[bot0 + x];
+          let cp: number;
+          let col: Uint16Array;
+          if (top || bot) {
+            const idx = top || bot;
+            cp = idx === C_EYE ? CP_EYE : top && bot ? CP_FULL : CP_HALF;
+            col = PAL_U16[idx];
+          } else {
+            const v = field[y * W + x];
+            const a = v < 0 ? -v : v;
+            const bkt = a < 0.07 ? 0 : a > 0.6 ? 4 : a > 0.32 ? 3 : a > 0.16 ? 2 : 1;
+            cp = WATER_CP[bkt];
+            col = v > 0 ? WATER_CREST[bkt] : WATER_TROUGH[bkt];
+          }
+          const ci = rowOff + x;
+          const i4 = ci * 4;
+          chB[ci] = cp;
+          fgB[i4] = col[0];
+          fgB[i4 + 1] = col[1];
+          fgB[i4 + 2] = col[2];
+          fgB[i4 + 3] = col[3];
+          bgB[i4] = POND_BG[0];
+          bgB[i4 + 1] = POND_BG[1];
+          bgB[i4 + 2] = POND_BG[2];
+          bgB[i4 + 3] = POND_BG[3];
+          atB[ci] = 0;
         }
       }
-  }
-
-  // rows -> color-run spans
-  const rows = grid.map((row, y) => {
-    const spans: { c: string; text: string }[] = [];
-    for (const cell of row) {
-      const last = spans[spans.length - 1];
-      if (last && last.c === cell.c) last.text += cell.ch;
-      else spans.push({ c: cell.c, text: cell.ch });
-    }
-    return (
-      <text key={y}>
-        {spans.map((s, i) => (
-          <span key={i} fg={s.c}>
-            {s.text}
-          </span>
-        ))}
-      </text>
-    );
-  });
-
-  return (
-    <box style={{ position: "absolute", left: 0, top: 0, width: W, height: H, zIndex: 0, flexDirection: "column" }}>
-      {rows}
-    </box>
+    },
+    [W, H, PW, PH, scale, mouseRef, splashRef],
   );
+
+  // `live` keeps the renderer's frame loop running so renderAfter fires every frame
+  return <box style={{ position: "absolute", left: 0, top: 0, width: W, height: H, zIndex: 0 }} live renderAfter={draw} />;
 }
 
 const BARS = "▁▂▃▄▅▆▇█";
@@ -1099,12 +1218,15 @@ function GitHubPulse() {
 // daily-visits bar chart — solid green bars with each day's count carved into the bar
 // as a vertical (rotated) dark number in the center column.
 const CHART_ROWS = 7;
-const BAR_W = 3; // cells per day column — center column holds the rotated count
-const CARVE = "#05080a"; // page bg → dark digit reads as a cutout in the green bar
+const BAR_W = 3; // preferred cells per day column — center column holds the rotated count
+const CARVE = "#030c0d"; // page bg → dark digit reads as a cutout in the green bar
 type ChartCell = { ch: string; fg: string; bg?: string };
 function VisitorChart({ data }: { data: number[] }) {
+  // shrink bar width to fit the terminal so the chart never overflows a narrow phone
+  const { width } = useTerminalDimensions();
+  const bw = Math.max(1, Math.min(BAR_W, Math.floor((width - 4) / data.length)));
   const max = Math.max(1, ...data);
-  const W = data.length * BAR_W;
+  const W = data.length * bw;
   const grid: ChartCell[][] = Array.from({ length: CHART_ROWS }, () =>
     Array.from({ length: W }, () => ({ ch: " ", fg: MUTED })),
   );
@@ -1114,11 +1236,11 @@ function VisitorChart({ data }: { data: number[] }) {
     // solid bar (green bg) from the bottom up
     for (let d = 0; d < barRows; d += 1) {
       const rowIdx = CHART_ROWS - 1 - d;
-      for (let k = 0; k < BAR_W; k += 1) grid[rowIdx][i * BAR_W + k] = { ch: " ", fg: ACCENT, bg: ACCENT };
+      for (let k = 0; k < bw; k += 1) grid[rowIdx][i * bw + k] = { ch: " ", fg: ACCENT, bg: ACCENT };
     }
     // count rotated 90° (one digit per row), carved dark into the bar, anchored at the bottom
     const digits = v > 0 ? String(v) : "";
-    const cx = i * BAR_W + Math.floor(BAR_W / 2);
+    const cx = i * bw + Math.floor(bw / 2);
     for (let j = 0; j < digits.length; j += 1) {
       const rowIdx = CHART_ROWS - digits.length + j;
       if (rowIdx >= CHART_ROWS - barRows && rowIdx < CHART_ROWS) grid[rowIdx][cx] = { ch: digits[j], fg: CARVE, bg: ACCENT };
@@ -1255,17 +1377,17 @@ function NowPlaying() {
   );
 }
 
-function Home({ visit }: { visit: VisitInfo }) {
+function Home({ visit, narrow }: { visit: VisitInfo; narrow: boolean }) {
   return (
-    <box style={{ flexDirection: "row", alignItems: "flex-start", paddingLeft: 2, paddingTop: 1 }}>
-      <box style={{ flexDirection: "column", width: 50 }}>
+    <box style={{ flexDirection: narrow ? "column" : "row", alignItems: "flex-start", paddingLeft: 2, paddingTop: 1 }}>
+      <box style={{ flexDirection: "column", width: narrow ? undefined : 50 }}>
         <Stat label="VISITORS">
           <VisitorHead total={visit.count} />
           <box style={{ height: 1 }} />
           <VisitorChart data={visit.daily} />
         </Stat>
       </box>
-      <box style={{ flexDirection: "column", paddingLeft: 4 }}>
+      <box style={{ flexDirection: "column", paddingLeft: narrow ? 0 : 4 }}>
         <GitHubPulse />
         <NowPlaying />
       </box>
@@ -1324,13 +1446,15 @@ function ResumePicker({
   );
 }
 
-function ProjectItem({ title, active }: { title: string; active: boolean }) {
+function ProjectItem({ title, active, index, onSelect }: { title: string; active: boolean; index: number; onSelect: (i: number) => void }) {
   const label = truncate(title, LIST_W - 4);
   return (
-    <text bg={active ? SEL_BG : undefined}>
-      <span fg={active ? ACCENT : FAINT}>{active ? " ▐▌ " : "    "}</span>
-      <span fg={active ? INK : MUTED}>{label.padEnd(LIST_W - 4)}</span>
-    </text>
+    <box onMouseDown={() => onSelect(index)}>
+      <text bg={active ? SEL_BG : undefined}>
+        <span fg={active ? ACCENT : FAINT}>{active ? " ▐▌ " : "    "}</span>
+        <span fg={active ? INK : MUTED}>{label.padEnd(LIST_W - 4)}</span>
+      </text>
+    </box>
   );
 }
 
@@ -1348,46 +1472,67 @@ function ProjectLinks({ p }: { p: Project }) {
   );
 }
 
-function Projects({ selected }: { selected: number }) {
-  const p = projects[selected];
+function ProjectDetail({ p, detailW }: { p: Project; detailW: number }) {
   const top3 = p.highlight?.toLowerCase().includes("top 3");
+  return (
+    <box style={{ flexGrow: 1, flexDirection: "column", paddingLeft: 2, paddingRight: 2, paddingTop: 1 }}>
+      {p.highlight && <text fg={ACCENT}>{(top3 ? "★ " : "") + p.highlight.toUpperCase()}</text>}
+      <text>
+        <strong fg={INK}>{p.title}</strong>
+      </text>
+      <box style={{ height: 1 }} />
+      <text fg={MUTED}>{p.summary}</text>
+      <box style={{ height: 1 }} />
+      <Rule w={detailW} />
+      <box style={{ height: 1 }} />
+      <text>
+        <span fg={FAINT}>STACK   </span>
+        {p.tags.map((t, i) => {
+          const { tag, col } = techTag(t);
+          return (
+            <span key={i} fg={col}>{`● ${tag}   `}</span>
+          );
+        })}
+      </text>
+      <box style={{ height: 1 }} />
+      <ProjectLinks p={p} />
+    </box>
+  );
+}
+
+function Projects({ selected, onSelect }: { selected: number; onSelect: (i: number) => void }) {
+  const p = projects[selected];
   const { width, height } = useTerminalDimensions();
+  const narrow = width < 64;
   const bodyRows = Math.max(4, height - 5);
-  const detailW = Math.max(20, width - LIST_W - 6);
+  const detailW = Math.max(20, width - (narrow ? 4 : LIST_W + 6));
+
+  // narrow: stack the (tappable) list above the selected project's detail
+  if (narrow) {
+    return (
+      <box style={{ flexDirection: "column", flexGrow: 1, paddingTop: 1 }}>
+        <text fg={FAINT}>{"  PROJECTS"}</text>
+        {projects.map((project, i) => (
+          <ProjectItem key={project.title} title={project.title} active={i === selected} index={i} onSelect={onSelect} />
+        ))}
+        <ProjectDetail p={p} detailW={detailW} />
+      </box>
+    );
+  }
+
   return (
     <box style={{ flexDirection: "row", flexGrow: 1 }}>
       <box style={{ width: LIST_W, flexDirection: "column", paddingTop: 1 }}>
         <text fg={FAINT}>{"  PROJECTS"}</text>
         <box style={{ height: 1 }} />
         {projects.map((project, i) => (
-          <ProjectItem key={project.title} title={project.title} active={i === selected} />
+          <ProjectItem key={project.title} title={project.title} active={i === selected} index={i} onSelect={onSelect} />
         ))}
       </box>
 
       <VRule rows={bodyRows} />
 
-      <box style={{ flexGrow: 1, flexDirection: "column", paddingLeft: 2, paddingRight: 2, paddingTop: 1 }}>
-        {p.highlight && <text fg={ACCENT}>{(top3 ? "★ " : "") + p.highlight.toUpperCase()}</text>}
-        <text>
-          <strong fg={INK}>{p.title}</strong>
-        </text>
-        <box style={{ height: 1 }} />
-        <text fg={MUTED}>{p.summary}</text>
-        <box style={{ height: 1 }} />
-        <Rule w={detailW} />
-        <box style={{ height: 1 }} />
-        <text>
-          <span fg={FAINT}>STACK   </span>
-          {p.tags.map((t, i) => {
-            const { tag, col } = techTag(t);
-            return (
-              <span key={i} fg={col}>{`● ${tag}   `}</span>
-            );
-          })}
-        </text>
-        <box style={{ height: 1 }} />
-        <ProjectLinks p={p} />
-      </box>
+      <ProjectDetail p={p} detailW={detailW} />
     </box>
   );
 }
@@ -1400,7 +1545,7 @@ function About({ linkedIn }: { linkedIn: LinkedInSnapshot }) {
   // bg={PANEL} per line: an opaque strip behind each row of text so the koi pond shows
   // *around* the words (between rows, in the margins) but never bleeds through the spaces.
   return (
-    <box style={{ flexDirection: "column", paddingLeft: 2, paddingTop: 2 }}>
+    <box style={{ flexDirection: "column", paddingLeft: 2, paddingTop: 1 }}>
       <text bg={PANEL}>
         <strong fg={INK}>{lp.name}</strong>
         {typeof lp.followerCount === "number" ? <span fg={MUTED}>{`   ${lp.followerCount} followers`}</span> : null}
@@ -1441,6 +1586,28 @@ function About({ linkedIn }: { linkedIn: LinkedInSnapshot }) {
   );
 }
 
+// word-wrap to width, preserving explicit newlines; hard-breaks words longer than w
+function wrapText(s: string, w: number): string[] {
+  const out: string[] = [];
+  for (const raw of s.split("\n")) {
+    let line = "";
+    for (const word of raw.split(" ")) {
+      if (line.length === 0) line = word;
+      else if (line.length + 1 + word.length <= w) line += ` ${word}`;
+      else {
+        out.push(line);
+        line = word;
+      }
+    }
+    while (line.length > w) {
+      out.push(line.slice(0, w));
+      line = line.slice(w);
+    }
+    out.push(line);
+  }
+  return out;
+}
+
 function Chat({
   messages,
   sending,
@@ -1460,45 +1627,46 @@ function Chat({
   onInput: (v: string) => void;
   onSubmit: (v: string) => void;
 }) {
-  const WINDOW = 12;
-  const end = Math.max(0, messages.length - scroll);
-  const start = Math.max(0, end - WINDOW);
-  const recent = messages.slice(start, end);
-  const hiddenAbove = start;
-  const hiddenBelow = messages.length - end;
+  // Word-wrap + row windowing done in plain JS: every rendered line is a fixed
+  // height-1 <text>, so the layout can never overflow and push the input off-screen
+  // (opentui text measurement has exact-fit quirks that broke flex/scrollbox layouts).
+  const { width: termW, height: termH } = useTerminalDimensions();
+  const bodyW = Math.max(10, termW - 6); // 2 pad each side + 2-char prefix
+  const rows: { prefix: string; body: string; pc: string; bc: string }[] = [];
+  for (const m of messages) {
+    const isErr = m.content.startsWith("OPENROUTER_API_KEY");
+    const wrapped = wrapText(m.content, bodyW);
+    wrapped.forEach((line, li) => {
+      if (m.role === "user") rows.push({ prefix: li === 0 ? "> " : "  ", body: line, pc: MUTED, bc: INK });
+      else rows.push({ prefix: li === 0 ? "⏺ " : "  ", body: line, pc: isErr ? ERR : ACCENT, bc: isErr ? ERR : INK });
+    });
+    rows.push({ prefix: "", body: "", pc: MUTED, bc: INK }); // blank line between messages
+  }
+  if (rows.length > 0) rows.pop();
+  // rows available: header 3 + chat paddingTop 1 + rule 1 + input 1 + footer 3 = 9
+  const avail = Math.max(3, termH - 9 - (sending ? 1 : 0));
+  const off = Math.min(scroll, Math.max(0, rows.length - avail));
+  const visible = rows.slice(Math.max(0, rows.length - avail - off), rows.length - off);
   return (
     <box style={{ flexGrow: 1, flexDirection: "column", paddingTop: 1 }}>
       <box style={{ flexGrow: 1, flexDirection: "column", paddingLeft: 2, paddingRight: 2 }}>
         {messages.length === 0 && (
-          <text bg={PANEL} fg={FAINT}>Ask about Jerry — projects, wins, stack, links. Type /help for commands.</text>
+          <text bg={PANEL} fg={FAINT} wrapMode="none" style={{ height: 1 }}>
+            Ask about Jerry — projects, wins, stack, links. Type /help for commands.
+          </text>
         )}
-        {hiddenAbove > 0 && <text bg={PANEL} fg={FAINT}>{`↑ ${hiddenAbove} earlier — PageUp`}</text>}
-        {recent.map((m, i) => {
-          const isErr = m.content.startsWith("OPENROUTER_API_KEY");
-          return (
-            <box key={start + i} style={{ flexDirection: "column", marginBottom: 1 }}>
-              {m.role === "user" ? (
-                <text bg={PANEL}>
-                  <span fg={MUTED}>{"> "}</span>
-                  <span fg={INK}>{m.content}</span>
-                </text>
-              ) : (
-                m.content.split("\n").map((line, li) => (
-                  <text key={li} bg={PANEL}>
-                    <span fg={isErr ? ERR : ACCENT}>{li === 0 ? "⏺ " : "  "}</span>
-                    <span fg={isErr ? ERR : INK}>{line}</span>
-                  </text>
-                ))
-              )}
-            </box>
-          );
-        })}
-        {hiddenBelow > 0 && <text bg={PANEL} fg={FAINT}>{`↓ ${hiddenBelow} newer — PageDown`}</text>}
+        {visible.map((r, i) => (
+          <text key={i} bg={PANEL} wrapMode="none" style={{ height: 1 }}>
+            <span fg={r.pc}>{r.prefix}</span>
+            <span fg={r.bc}>{r.body}</span>
+          </text>
+        ))}
         {sending && <ThinkingDots />}
       </box>
       <Rule />
       <box style={{ flexDirection: "row", paddingLeft: 2, paddingRight: 2 }}>
-        <text fg={ACCENT}>{"> "}</text>
+        {/* trailing-space text also measures 2 wrapped rows (same quirk) — pin it */}
+        <text fg={ACCENT} wrapMode="none" style={{ height: 1 }}>{"> "}</text>
         <input
           key={inputKey}
           focused={inputActive}
