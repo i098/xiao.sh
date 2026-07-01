@@ -981,21 +981,24 @@ export function KoiPond({
         const py = ux;
         const bx0 = t0.x + ux * 1.6 * size;
         const by0 = t0.y + uy * 1.6 * size;
-        const swim = k.s * 7; // shared swim phase → tail + whiskers share the body's wavyness
+        const swim = k.s * 4; // shared swim phase → tail + whiskers share the body's wavyness
         const sway = Math.sin(swim) * 3.0 * size;
         const finLenT = 5 * size; // the solid fork stays short
         const whiskLen = N_COILS * COIL_SP * 0.35 * size; // whiskers ~a third of the fish length
         for (const lobe of [1, -1]) {
-          const spread = lobe * 3.2 * size + sway;
+          // barely-forked: both lobes hug the centerline and ride the same sway, so the
+          // pair reads as one flowing caudal fin (real koi) instead of two split streamers
+          const spread = lobe * 0.9 * size + sway;
           const apx = bx0 + ux * finLenT + px * spread;
           const apy = by0 + uy * finLenT + py * spread;
           triFill(bx0 + px * 0.7, by0 + py * 0.7, bx0 - px * 0.7, by0 - py * 0.7, apx, apy, v.base);
-          // wavy whisker from the lobe tip: the wave LAGS along the length (`- f`) so the tip
-          // trails behind the tail's swing instead of leading against the fish's motion.
+          // wavy whisker from the lobe tip: same amplitude as the tail sway with a gentle
+          // phase lag along the length, so fork → tip reads as ONE traveling wave (the old
+          // 3.5-rad lag put the tip near-antiphase — whiskers looked detached from the tail)
           for (let s2 = 1; s2 <= 12; s2 += 1) {
             const f = s2 / 12;
             const along = f * whiskLen;
-            const wave = Math.sin(swim - f * 3.5) * 2.4 * size * f; // amplitude grows toward the tip
+            const wave = Math.sin(swim - f * 1.8) * 3.0 * size * f; // grows root→tip, trails the sway
             const wx = apx + ux * along + px * wave;
             const wy = apy + uy * along + py * wave;
             disk(wx, wy, Math.max(0.4, (1 - f) * 1.0 * size + 0.3), v.fin);
