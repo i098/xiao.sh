@@ -314,18 +314,28 @@ export function NowPlaying({ volume, controlsWidth }: { volume?: VolumeChannel; 
       {beforeRows.map((e, i) => {
         const isSel = flat && Boolean(volume) && i === sel; // browsable selection (web idle only)
         const rowFg = !flat ? FAINT : isSel || (!volume && i === 0) ? INK : MUTED;
-        return (
-          <text key={i} bg={PANEL}>
+        // visitor mode (idle + volume): the whole row is the tap target — it selects and plays
+        // the preview (1-char « ▶ » are untappable on a phone). The Spotify link moves to the
+        // focus row; my-live-playback rows keep their links.
+        const tappable = Boolean(volume) && !playing;
+        const row = (
+          <text key={tappable ? undefined : i} bg={PANEL}>
             <span fg={isSel ? MUTED : FAINT}>{!flat ? "  · " : isSel ? "▸ " : "· "}</span>
-            {e.track.songUrl ? (
+            {e.track.songUrl && !tappable ? (
               <a href={e.track.songUrl} fg={rowFg} attributes={flat ? TextAttributes.UNDERLINE : undefined}>
                 {truncate(e.track.name, 32)}
               </a>
             ) : (
-              <span fg={rowFg}>{truncate(e.track.name, 32)}</span>
+              <span fg={rowFg} attributes={flat && tappable ? TextAttributes.UNDERLINE : undefined}>{truncate(e.track.name, 32)}</span>
             )}
             <span fg={FAINT}>{e.track.artists.length ? ` — ${truncate(e.track.artists.join(", "), 18)}` : ""}</span>
           </text>
+        );
+        // preview-window rows are previous.slice(winStart, sel): absolute index = winStart + i
+        return tappable ? (
+          <box key={i} onMouseDown={() => startListen(flat ? i : winStart + i)}>{row}</box>
+        ) : (
+          row
         );
       })}
       {focus ? (
@@ -352,19 +362,23 @@ export function NowPlaying({ volume, controlsWidth }: { volume?: VolumeChannel; 
           {playing && nextTracks.length ? <box style={{ height: 1 }} /> : null}
         </box>
       ) : null}
-      {nextTracks.map((t, i) => (
-        <text key={`q${i}`} bg={PANEL}>
-          <span fg={FAINT}>{"  » "}</span>
-          {t.songUrl ? (
-            <a href={t.songUrl} fg={MUTED}>
-              {truncate(t.name, 32)}
-            </a>
-          ) : (
-            <span fg={MUTED}>{truncate(t.name, 32)}</span>
-          )}
-          <span fg={FAINT}>{t.artists.length ? ` — ${truncate(t.artists.join(", "), 18)}` : ""}</span>
-        </text>
-      ))}
+      {nextTracks.map((t, i) => {
+        const row = (
+          <text key={playing ? `q${i}` : undefined} bg={PANEL}>
+            <span fg={FAINT}>{"  » "}</span>
+            {t.songUrl && playing ? (
+              <a href={t.songUrl} fg={MUTED}>
+                {truncate(t.name, 32)}
+              </a>
+            ) : (
+              <span fg={MUTED}>{truncate(t.name, 32)}</span>
+            )}
+            <span fg={FAINT}>{t.artists.length ? ` — ${truncate(t.artists.join(", "), 18)}` : ""}</span>
+          </text>
+        );
+        // preview-window rows below the focus are previous.slice(sel+1, ...): absolute sel+1+i
+        return playing ? row : <box key={`q${i}`} onMouseDown={() => startListen(sel + 1 + i)}>{row}</box>;
+      })}
       {!playing && volume ? (
         <box style={{ flexDirection: "column" }}>
           <box style={{ height: 1 }} />

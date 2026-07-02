@@ -51,6 +51,15 @@ export const projects: Project[] = [
     highlight: "Hackathon Top 3",
   },
   {
+    title: "BlueDocs",
+    summary:
+      "An interactive ocean planning tool with live status updates and environment mapping powered by Mapbox.",
+    tags: ["TypeScript", "HTML", "Python"],
+    image: "https://opengraph.githubassets.com/1/shlawgathon/BlueDocs",
+    githubUrl: "https://github.com/shlawgathon/BlueDocs",
+    highlight: "Hackathon Top 3",
+  },
+  {
     title: "Physical.ai",
     summary:
       "Analytics and marketplace platform for physical ads with real-time preview, transparent pricing, and impact scoring.",
@@ -88,6 +97,44 @@ export const projects: Project[] = [
       "https://www.linkedin.com/posts/xiaojerry_another-day-another-hackathon-shack15-activity-7385938406486437888-_u5O?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEerNM8BaiLwsyO2-11sjJzKRTO2VXWvfD4",
     eventUrl: "https://cerebralvalley.ai/e/2025-ted-ai-hackathon?tab=guest-list",
     highlight: "Hackathon Top 6",
+  },
+  {
+    title: "tactile",
+    summary: "The ultimate multi-agent orchestrated CAD analysis and update platform.",
+    tags: ["Java", "Python", "TypeScript"],
+    image: "https://opengraph.githubassets.com/1/shlawgathon/tactile",
+    githubUrl: "https://github.com/shlawgathon/tactile",
+  },
+  {
+    title: "Computer-Use",
+    summary: "Let AI steer your device. Turns natural language into real on-screen actions.",
+    tags: ["Rust", "TypeScript", "CSS"],
+    image: "https://opengraph.githubassets.com/1/shlawgathon/Computer-Use",
+    githubUrl: "https://github.com/shlawgathon/Computer-Use",
+  },
+  {
+    title: "ratemyhackathons",
+    summary:
+      "Whine, complain, compliment. Rate the hackathons you've survived - may the most memorable team win.",
+    tags: ["Svelte", "Rust", "Python"],
+    image: "https://opengraph.githubassets.com/1/undeemed/ratemyhackathons",
+    githubUrl: "https://github.com/undeemed/ratemyhackathons",
+  },
+  {
+    title: "ocd",
+    summary:
+      "Zero-tolerance audit-and-fix Claude Code plugin for visual polish and code quality. Measures rendered output, fixes every violation.",
+    tags: ["JavaScript"],
+    image: "https://opengraph.githubassets.com/1/undeemed/ocd",
+    githubUrl: "https://github.com/undeemed/ocd",
+  },
+  {
+    title: "walkthrough-kit",
+    summary:
+      "Claude Code plugin for spoken code-demo walkthroughs in isolated grader sandboxes: file-line pointers and portable commands.",
+    tags: ["Markdown"],
+    image: "https://opengraph.githubassets.com/1/undeemed/walkthrough-kit",
+    githubUrl: "https://github.com/undeemed/walkthrough-kit",
   },
   {
     title: "get-shit-done-codex",

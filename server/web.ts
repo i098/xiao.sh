@@ -71,12 +71,10 @@ ${SEO_BODY}
 <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.11.0/lib/addon-web-links.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-canvas@0.7.0/lib/addon-canvas.min.js"></script>
 <script>
-  // phones get a smaller font so more cols/rows fit (the TUI goes single-column under 64 cols)
-  const isPhone = window.matchMedia("(max-width: 600px)").matches;
   const term = new Terminal({
     cursorBlink: true,
     fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
-    fontSize: isPhone ? 11 : 14,
+    fontSize: 14,
     // transparent default bg: unpainted cells become windows onto the koi-pond canvas
     // behind the terminal (/pond.js); text rows keep their opaque PANEL strips.
     allowTransparency: true,
@@ -96,9 +94,33 @@ ${SEO_BODY}
   const fit = new FitAddon.FitAddon();
   term.loadAddon(fit);
   term.open(document.getElementById("app"));
-  // canvas renderer: draws block/half-block glyphs (█ ▀) edge-to-edge so pixel art has no gaps
-  try { term.loadAddon(new CanvasAddon.CanvasAddon()); } catch (e) {}
-  fit.fit();
+  // canvas renderer: draws block/half-block glyphs (█ ▀) edge-to-edge so pixel art has no gaps.
+  // Reloaded on font change (fitScaled): the addon caches cell metrics at load and keeps
+  // painting stale dimensions after a runtime fontSize change — the right half goes blank.
+  let canvas = null;
+  function loadCanvas() {
+    try { canvas && canvas.dispose(); } catch (e) {}
+    canvas = null;
+    try { canvas = new CanvasAddon.CanvasAddon(); term.loadAddon(canvas); } catch (e) { canvas = null; }
+  }
+  loadCanvas();
+  // scale the font down until the full desktop layout fits — 90 cols: the home row is
+  // 2 pad + 43 visitors col + 1 + 3 volume bar + 2 + ~39 github/music block. (64, the TUI's
+  // single-column breakpoint, isn't enough: 64..89 renders the wide layout with the right
+  // block clipped.) Restart from 14 every time so rotating back to a wide viewport restores it.
+  const MIN_COLS = 90;
+  function fitScaled() {
+    const before = term.options.fontSize;
+    let size = 14;
+    do {
+      term.options.fontSize = size--;
+      fit.fit();
+    } while (term.cols < MIN_COLS && size >= 7);
+    // ponytail: 7px floor — can't fit even at 7 (≲370px wide) → readable font + the TUI's own narrow layout
+    if (term.cols < MIN_COLS) { term.options.fontSize = 11; fit.fit(); }
+    if (term.options.fontSize !== before) loadCanvas();
+  }
+  fitScaled();
   // hotkeys work immediately — no click-to-engage. Desktop only: focusing on touch devices
   // would summon the soft keyboard over the page.
   if (!window.matchMedia("(pointer: coarse)").matches) term.focus();
@@ -121,7 +143,7 @@ ${SEO_BODY}
   function sizeToViewport() {
     const vv = window.visualViewport;
     if (vv) document.getElementById("app").style.height = vv.height + "px";
-    fit.fit();
+    fitScaled();
     sendResize();
   }
   addEventListener("resize", sizeToViewport);
@@ -516,6 +538,7 @@ Bun.serve<SessionData>({
         if (control.type !== "resize" || !control.cols || !control.rows) return;
 
         if (!data.renderer && !data.starting) {
+          if (process.env.DEBUG_RESIZE) console.log("session start", control.cols, control.rows);
           data.starting = true;
           const stdin = makeStdin();
           const stdout = makeStdout(ws);
@@ -526,6 +549,7 @@ Bun.serve<SessionData>({
             try { ws.send(seq); } catch { /* socket gone */ }
           });
           if (data.pendingVol != null) data.volume.set(data.pendingVol, "client");
+          if (process.env.DEBUG_RESIZE) console.log("starting session", control.cols, control.rows);
           data.renderer = await startSession(
             { stdin: stdin as unknown as NodeJS.ReadStream, stdout: stdout as unknown as NodeJS.WriteStream, width: control.cols, height: control.rows },
             () => ws.close(),
@@ -534,7 +558,9 @@ Bun.serve<SessionData>({
           );
           data.starting = false;
         } else if (data.renderer) {
+          if (process.env.DEBUG_RESIZE) console.log("resize msg", control.cols, control.rows);
           (data.renderer as unknown as { resize?: (w: number, h: number) => void }).resize?.(control.cols, control.rows);
+          if (process.env.DEBUG_RESIZE) console.log("renderer now", (data.renderer as any)._terminalWidth, (data.renderer as any)._terminalHeight);
         }
         return;
       }
