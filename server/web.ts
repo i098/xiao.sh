@@ -1,6 +1,6 @@
 import { PassThrough, Writable } from "node:stream";
 import { startSession } from "../tui/session";
-import type { VolumeChannel } from "../tui/app";
+import type { VolumeChannel } from "../tui/music";
 import { SEO_HEAD, SEO_BODY, robotsTxt, sitemapXml, llmsTxt } from "./seo";
 import { getSpotify } from "@/lib/spotify";
 import { getPreviewUrl } from "@/lib/preview";

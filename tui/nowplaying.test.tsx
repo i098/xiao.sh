@@ -15,8 +15,8 @@ const track = (name: string, artist: string): SpotifyTrack => ({
 // swap this between tests; the mock closes over it
 let state: SpotifyState;
 mock.module("@/lib/spotify", () => ({ getSpotify: async () => state }));
-const { NowPlaying, VolumeBar } = await import("./app");
-type VolumeChannel = import("./app").VolumeChannel;
+const { NowPlaying, VolumeBar } = await import("./music");
+type VolumeChannel = import("./music").VolumeChannel;
 
 function fakeChannel(initial: number) {
   let value = initial;

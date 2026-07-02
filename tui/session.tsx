@@ -21,7 +21,7 @@ export type SessionStreams = {
 export async function startSession(
   streams: SessionStreams,
   onExit: () => void,
-  opts?: { volume?: import("./app").VolumeChannel; pond?: boolean },
+  opts?: { volume?: import("./music").VolumeChannel; pond?: boolean },
 ): Promise<CliRenderer> {
   // re-read per session; getLinkedInSnapshot has its own 30s TTL so new visits get fresh data
   const linkedIn = await getLinkedInSnapshot();
