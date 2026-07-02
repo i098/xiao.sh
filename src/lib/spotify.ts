@@ -1,6 +1,9 @@
 // Spotify now-playing for the TUI (server-side). Ports the web app's API route logic and
 // adds a recently-played fallback so the home screen always has something to show.
 // Reads SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET / SPOTIFY_REFRESH_TOKEN; no-op without them.
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
+
 const TOKEN_URL = "https://accounts.spotify.com/api/token";
 const NOW_URL = "https://api.spotify.com/v1/me/player/currently-playing";
 const RECENT_URL = "https://api.spotify.com/v1/me/player/recently-played?limit=6";
@@ -99,6 +102,32 @@ let recentRetryAt = 0;
 // tracks we watched playing, newest first — history fallback while recently-played is rate-limited
 let observed: SpotifyEntry[] = [];
 
+// history survives restarts/redeploys: persisted to .data (the prod PVC, same as visits.json).
+// Without this every rollout blanked RECENTLY PLAYED until the rate-limited API recovered.
+const HISTORY_FILE = path.join(process.cwd(), ".data", "spotify.json");
+try {
+  const p = JSON.parse(readFileSync(HISTORY_FILE, "utf8")) as {
+    lastRecent?: SpotifyEntry[];
+    recentFetchedAt?: number;
+    recentRetryAt?: number;
+    observed?: SpotifyEntry[];
+  };
+  lastRecent = p.lastRecent ?? [];
+  recentFetchedAt = p.recentFetchedAt ?? 0;
+  recentRetryAt = p.recentRetryAt ?? 0;
+  observed = p.observed ?? [];
+} catch {
+  // first boot — nothing persisted yet
+}
+function persistHistory() {
+  try {
+    mkdirSync(path.dirname(HISTORY_FILE), { recursive: true });
+    writeFileSync(HISTORY_FILE, JSON.stringify({ lastRecent, recentFetchedAt, recentRetryAt, observed }));
+  } catch {
+    // disk hiccup — in-memory copy still serves
+  }
+}
+
 // SPOTIFY_MOCK=1 — offline/UI work: nothing playing, 8 fake recent tracks (staggered
 // timestamps) so the idle widget and its display cap are visible without hitting Spotify.
 function mockState(): SpotifyState {
@@ -159,6 +188,7 @@ async function fetchSpotify(): Promise<SpotifyState> {
 
     if (current && observed[0]?.track.name !== current.name)
       observed = [{ track: current, playedAt: new Date().toISOString() }, ...observed].slice(0, 8);
+      persistHistory();
 
     // queue only matters while playing; recent is throttled — most polls are a single request
     const wantRecent = Date.now() - recentFetchedAt > 60_000 && Date.now() >= recentRetryAt;
@@ -175,9 +205,11 @@ async function fetchSpotify(): Promise<SpotifyState> {
         .map((it) => ({ track: trackFrom(it.track), playedAt: typeof it.played_at === "string" ? it.played_at : null }));
       lastRecent = recent;
       recentFetchedAt = Date.now();
+      persistHistory();
     } else if (recRes?.status === 429) {
       const after = Number(recRes.headers.get("retry-after")) || 60;
       recentRetryAt = Date.now() + Math.min(after, 3600) * 1000;
+      persistHistory();
     }
 
     let queue: SpotifyTrack[] = [];

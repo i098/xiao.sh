@@ -104,11 +104,12 @@ ${SEO_BODY}
     try { canvas = new CanvasAddon.CanvasAddon(); term.loadAddon(canvas); } catch (e) { canvas = null; }
   }
   loadCanvas();
-  // scale the font down until the full desktop layout fits — 90 cols: the home row is
-  // 2 pad + 43 visitors col + 1 + 3 volume bar + 2 + ~39 github/music block. (64, the TUI's
-  // single-column breakpoint, isn't enough: 64..89 renders the wide layout with the right
-  // block clipped.) Restart from 14 every time so rotating back to a wide viewport restores it.
-  const MIN_COLS = 90;
+  // scale the font down until the full desktop layout fits — 96 cols: the home row is
+  // 2 pad + 43 visitors col + 1 + 5 volume bar + 2 + 43 github stats row ("1.5k commits  ·
+  // 3.8k contributions  ·  34★"). (64, the TUI's single-column breakpoint, isn't enough:
+  // 64..95 renders the wide layout with the right block clipped/wrapped.) Restart from 14
+  // every time so rotating back to a wide viewport restores it.
+  const MIN_COLS = 96;
   function fitScaled() {
     const before = term.options.fontSize;
     let size = 14;
@@ -389,6 +390,7 @@ type SessionData = {
   pendingWrites: (() => void)[]; // stdout callbacks held while the socket is congested
   volume: VolumeChannel | null;
   pendingVol: number | null; // client seed that raced the session start
+  pendingSize: { cols: number; rows: number } | null; // resize that raced the session start
 };
 
 // Links the TUI volume bar + preview controls to the tab's <audio>. TUI-originated changes go
@@ -482,7 +484,7 @@ Bun.serve<SessionData>({
       // Host it was served from — blocks cross-site WS hijacking while allowing real-device access
       const sameOrigin = originHost !== "" && originHost === host;
       if (!allowed.has(origin) && !sameOrigin) return new Response("forbidden", { status: 403 });
-      if (server.upgrade(req, { data: { stdin: null, renderer: null, starting: false, pendingWrites: [], volume: null, pendingVol: null } })) return;
+      if (server.upgrade(req, { data: { stdin: null, renderer: null, starting: false, pendingWrites: [], volume: null, pendingVol: null, pendingSize: null } })) return;
       return new Response("websocket upgrade failed", { status: 400 });
     }
     // the cat (restored from the old Next.js app's src/app/icon.png) — public/favicon.ico
@@ -538,7 +540,6 @@ Bun.serve<SessionData>({
         if (control.type !== "resize" || !control.cols || !control.rows) return;
 
         if (!data.renderer && !data.starting) {
-          if (process.env.DEBUG_RESIZE) console.log("session start", control.cols, control.rows);
           data.starting = true;
           const stdin = makeStdin();
           const stdout = makeStdout(ws);
@@ -549,7 +550,6 @@ Bun.serve<SessionData>({
             try { ws.send(seq); } catch { /* socket gone */ }
           });
           if (data.pendingVol != null) data.volume.set(data.pendingVol, "client");
-          if (process.env.DEBUG_RESIZE) console.log("starting session", control.cols, control.rows);
           data.renderer = await startSession(
             { stdin: stdin as unknown as NodeJS.ReadStream, stdout: stdout as unknown as NodeJS.WriteStream, width: control.cols, height: control.rows },
             () => ws.close(),
@@ -557,10 +557,17 @@ Bun.serve<SessionData>({
             { volume: data.volume, pond: false },
           );
           data.starting = false;
+          // a resize that arrived while the session was booting (phones: the address-bar/viewport
+          // settles and refits right after connect) would otherwise be lost — the renderer would
+          // keep painting the stale width and every frame wraps/mangles in the narrower terminal
+          if (data.pendingSize) {
+            resizeSession(data.renderer, data.pendingSize.cols, data.pendingSize.rows);
+            data.pendingSize = null;
+          }
         } else if (data.renderer) {
-          if (process.env.DEBUG_RESIZE) console.log("resize msg", control.cols, control.rows);
-          (data.renderer as unknown as { resize?: (w: number, h: number) => void }).resize?.(control.cols, control.rows);
-          if (process.env.DEBUG_RESIZE) console.log("renderer now", (data.renderer as any)._terminalWidth, (data.renderer as any)._terminalHeight);
+          resizeSession(data.renderer, control.cols, control.rows);
+        } else {
+          data.pendingSize = { cols: control.cols, rows: control.rows }; // raced the startup await
         }
         return;
       }
@@ -581,6 +588,16 @@ Bun.serve<SessionData>({
     },
   },
 });
+
+// Resize + full repaint. The client's xterm is already at the new size when this runs, so any
+// frames streamed in between were mangled by old-size cursor addressing; opentui's diff renderer
+// compares against its own model and can't see that trash — force it to re-emit every cell.
+function resizeSession(renderer: Awaited<ReturnType<typeof startSession>>, cols: number, rows: number) {
+  renderer.resize(cols, rows);
+  const r = renderer as unknown as { forceFullRepaintRequested?: boolean; requestRender?: () => void };
+  r.forceFullRepaintRequested = true; // private flag, but the only hook that makes the native diff repaint unchanged cells
+  r.requestRender?.();
+}
 
 // stdin shim: a readable stream opentui can treat like a raw TTY.
 function makeStdin() {
