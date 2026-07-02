@@ -36,6 +36,10 @@ function fakeChannel(initial: number) {
     onAmp(_fn) {
       return () => {};
     },
+    feedDur(_ms) {},
+    onDur(_fn) {
+      return () => {};
+    },
   };
   return channel;
 }

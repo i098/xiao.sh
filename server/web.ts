@@ -247,6 +247,12 @@ ${SEO_BODY}
   // OSC 778: visitor-driven playback of my recent tracks (TUI « ▶ » controls while I'm offline).
   // manual=true keeps pollSong's idle path from stopping what the visitor started.
   let manual = false;
+  // previews vary in length (iTunes cuts can be 90s) - tell the TUI the real number once the
+  // file's metadata is in, so its progress bar and auto-advance match what's actually playing
+  song.addEventListener("durationchange", () => {
+    if (manual && ws.readyState === 1 && isFinite(song.duration) && song.duration > 0)
+      ws.send(JSON.stringify({ type: "dur", value: Math.round(song.duration * 1000) }));
+  });
   term.parser.registerOscHandler(778, (d) => {
     if (d === "stop") {
       manual = false;
@@ -371,6 +377,7 @@ function makeVolume(sendToClient: (seq: string) => void): VolumeChannel {
   let value = 0.04;
   const subs = new Set<(v: number) => void>();
   const ampSubs = new Set<(v: number[]) => void>();
+  const durSubs = new Set<(ms: number) => void>();
   return {
     get: () => value,
     set(v, source) {
@@ -391,6 +398,13 @@ function makeVolume(sendToClient: (seq: string) => void): VolumeChannel {
     onAmp(fn) {
       ampSubs.add(fn);
       return () => ampSubs.delete(fn);
+    },
+    feedDur(ms) {
+      durSubs.forEach((fn) => fn(ms));
+    },
+    onDur(fn) {
+      durSubs.add(fn);
+      return () => durSubs.delete(fn);
     },
   };
 }
@@ -418,7 +432,7 @@ async function nowPlayingJson(): Promise<string> {
   const cur = s.isPlaying ? s.current : null;
   // derive the track id from the song url (https://open.spotify.com/track/{id})
   const id = cur?.songUrl?.split("/track/")[1]?.split("?")[0] || null;
-  const previewUrl = id ? await getPreviewUrl(id) : null;
+  const previewUrl = id && cur ? await getPreviewUrl(id, cur.name, cur.artists[0] ?? "") : null;
   const body = JSON.stringify({
     playing: Boolean(cur),
     name: cur?.name ?? null,
@@ -486,6 +500,11 @@ Bun.serve<SessionData>({
         if (control.type === "vol" && typeof control.value === "number") {
           if (data.volume) data.volume.set(control.value, "client");
           else data.pendingVol = control.value; // session not up yet — apply once it is
+          return;
+        }
+        // real preview duration from the tab's loaded metadata (iTunes cuts vary: 30s/90s)
+        if (control.type === "dur" && typeof control.value === "number") {
+          data.volume?.feedDur(control.value);
           return;
         }
         // live frequency bands from the tab's analyser while a preview plays

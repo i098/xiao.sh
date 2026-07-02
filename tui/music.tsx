@@ -19,6 +19,9 @@ export type VolumeChannel = {
   // live frequency bands (bass→treble, 0..1) from the tab's analyser while a preview plays
   feedAmp(v: number[]): void;
   onAmp(fn: (v: number[]) => void): () => void;
+  // real duration of the loaded preview (iTunes cuts vary: 30s or 90s) from the tab's metadata
+  feedDur(ms: number): void;
+  onDur(fn: (ms: number) => void): () => void;
 };
 
 // animated equalizer (deterministic sines, no RNG) shown while a track is playing
@@ -187,7 +190,13 @@ export function NowPlaying({ volume, controlsWidth }: { volume?: VolumeChannel; 
   // visitor playback (idle only): which recent track is loaded and whether it's sounding
   const [sel, setSel] = useState(0);
   const [listening, setListening] = useState(false);
-  const [listenStart, setListenStart] = useState(0); // when the current preview started (30s loop)
+  const [listenStart, setListenStart] = useState(0); // when the current preview started
+  // preview length: assume 30s until the tab loads the file and reports the real value
+  const [previewMs, setPreviewMs] = useState(30_000);
+  useEffect(
+    () => volume?.onDur((ms) => setPreviewMs(Math.max(5_000, Math.min(120_000, ms)))),
+    [volume],
+  );
   useEffect(() => {
     if (!isPlaying && !listening) return;
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -208,9 +217,10 @@ export function NowPlaying({ volume, controlsWidth }: { volume?: VolumeChannel; 
   const startListen = (n: number) => {
     if (!volume || idleList.length === 0) return;
     const m = ((n % idleList.length) + idleList.length) % idleList.length;
-    const id = idleList[m]?.track.songUrl?.split("/track/")[1]?.split("?")[0];
-    if (!id) return;
-    getPreviewUrl(id)
+    const track = idleList[m]?.track;
+    const id = track?.songUrl?.split("/track/")[1]?.split("?")[0];
+    if (!id || !track) return;
+    getPreviewUrl(id, track.name, track.artists[0] ?? "")
       .then((url) => {
         if (url) {
           volume.play(url);
@@ -218,6 +228,7 @@ export function NowPlaying({ volume, controlsWidth }: { volume?: VolumeChannel; 
           setListening(true);
           setListenStart(Date.now());
           setNow(Date.now());
+          setPreviewMs(30_000); // until the tab reports the real preview length
         }
       })
       .catch(() => {});
@@ -243,7 +254,7 @@ export function NowPlaying({ volume, controlsWidth }: { volume?: VolumeChannel; 
   const advancedFor = useRef(0);
   useEffect(() => {
     if (!listening || isPlaying) return;
-    if (now - listenStart >= 30_000 && advancedFor.current !== listenStart) {
+    if (now - listenStart >= previewMs && advancedFor.current !== listenStart) {
       advancedFor.current = listenStart;
       startListen(sel + 1);
     }
@@ -291,8 +302,8 @@ export function NowPlaying({ volume, controlsWidth }: { volume?: VolumeChannel; 
       ? previous.slice(sel + 1, winStart + winSize).map((e) => e.track)
       : [];
   // previews are hard-capped at 30s by Spotify (the CDN file itself); play once, no loop
-  const focusProgress = playing ? shownProgress : preview ? Math.min(30_000, now - listenStart) : null;
-  const focusDuration = playing ? state.durationMs : preview ? 30_000 : null;
+  const focusProgress = playing ? shownProgress : preview ? Math.min(previewMs, now - listenStart) : null;
+  const focusDuration = playing ? state.durationMs : preview ? previewMs : null;
   const flat = !focus; // plain browsable list (idle, nothing sounding)
   const meta = flat && previous[0]?.playedAt ? timeAgo(previous[0].playedAt) : undefined;
   // hierarchy: dim indented history above, bright focus block set off by blank lines,
