@@ -10,7 +10,7 @@ const HTML = `<!doctype html>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>xiao.sh</title>${SEO_HEAD}
-<link rel="icon" href="/favicon.ico" />
+<link rel="icon" type="image/png" href="/favicon.png" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css" />
 <style>
   html,body{margin:0;height:100%;background:#030c0d;overflow:hidden;}
@@ -207,8 +207,12 @@ Bun.serve<SessionData>({
       if (server.upgrade(req, { data: { stdin: null, renderer: null, starting: false } })) return;
       return new Response("websocket upgrade failed", { status: 400 });
     }
-    if (url.pathname === "/favicon.ico")
-      return new Response(Bun.file("public/favicon.ico"), { headers: { "cache-control": "public, max-age=86400" } });
+    // the cat (restored from the old Next.js app's src/app/icon.png) — public/favicon.ico
+    // is the untouched create-next-app Vercel icon, don't serve it
+    if (url.pathname === "/favicon.ico" || url.pathname === "/favicon.png")
+      return new Response(Bun.file("public/favicon.png"), {
+        headers: { "content-type": "image/png", "cache-control": "public, max-age=86400" },
+      });
     // SEO/GEO endpoints
     if (url.pathname === "/robots.txt") return new Response(robotsTxt(), { headers: { "content-type": "text/plain; charset=utf-8" } });
     if (url.pathname === "/sitemap.xml") return new Response(sitemapXml(), { headers: { "content-type": "application/xml; charset=utf-8" } });
