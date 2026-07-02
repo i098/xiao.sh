@@ -9,10 +9,27 @@ import type { LinkedInSnapshot } from "@/lib/linkedin";
 import type { VisitInfo } from "@/lib/visits";
 import { capture } from "@/lib/analytics";
 import { getSpotify, type SpotifyState } from "@/lib/spotify";
+import { getPreviewUrl } from "@/lib/preview";
 import { autoName, deleteSession, listSessions, loadSession, saveSession, type SavedSession } from "@/lib/sessions";
 import { liveCount } from "@/lib/presence";
 import { getGitHub, type GitHubPulse } from "@/lib/github";
 import { recordQuestion } from "@/lib/questions";
+import {
+  PondSim,
+  PAL_HEX,
+  POND_BG_HEX,
+  WATER_CP,
+  WATER_CREST_HEX,
+  WATER_TROUGH_HEX,
+  CP_FULL,
+  CP_HALF,
+  CP_EYE,
+  C_EYE,
+  waterBucket,
+  MOVE_AMP,
+  DOWN_AMP,
+  SPLASH_CAP,
+} from "@/lib/pond";
 
 // Editorial palette: green ACCENT reserved for links/active/live; neutral INK/MUTED/FAINT for hierarchy.
 const ACCENT = "#43f08a";
@@ -21,9 +38,9 @@ const MUTED = "#7c8a82";
 const FAINT = "#2c3531";
 const SEL_BG = "#15211b";
 const ERR = "#fda4af";
-// opaque strip behind text so the koi pond doesn't bleed through the spaces between words.
-// matches the terminal bg (deep green) so the strips stay seamless.
-const PANEL = "#030c0d";
+// text rows paint no background — the koi pond (browser canvas on web, server-drawn over ssh)
+// shows through the gaps. Full-screen overlays (boot transition, pickers) use POND_BG_HEX.
+const PANEL = "transparent";
 
 const LIST_W = 30;
 
@@ -67,17 +84,15 @@ function compactLanguage(value: string) {
 // measures as 2 wrapped rows (opentui edge case), overflowing tight column layouts
 function Rule({ w }: { w?: number }) {
   const { width } = useTerminalDimensions();
-  return <text fg={FAINT} wrapMode="none" style={{ height: 1 }}>{"-".repeat(Math.max(1, w ?? width))}</text>;
+  return <text bg={PANEL} fg={FAINT} wrapMode="none" style={{ height: 1 }}>{"-".repeat(Math.max(1, w ?? width))}</text>;
 }
+// one multi-line text node (not one per row) with pinned size — cheap and layout-stable
 function VRule({ rows }: { rows: number }) {
+  const n = Math.max(1, rows);
   return (
-    <box style={{ flexDirection: "column" }}>
-      {Array.from({ length: Math.max(1, rows) }, (_, i) => (
-        <text key={i} fg={FAINT}>
-          ╎
-        </text>
-      ))}
-    </box>
+    <text bg={PANEL} fg={FAINT} wrapMode="none" style={{ width: 1, height: n }}>
+      {Array.from({ length: n }, () => "╎").join("\n")}
+    </text>
   );
 }
 
@@ -136,7 +151,7 @@ const LOCATIONS = "SF, CA  |  Sugar Land, TX  |  Boston, MA";
 // otherwise renders as plain underlined accent text — never garbage.
 function LinkLine({ label, href, text, bg }: { label: string; href: string; text: string; bg?: string }) {
   return (
-    <text bg={bg}>
+    <text bg={bg ?? PANEL}>
       <span fg={MUTED}>{label.padEnd(10)}</span>
       <a href={href} fg={ACCENT} attributes={TextAttributes.UNDERLINE}>
         {text}
@@ -155,7 +170,7 @@ function ThinkingDots() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
-    <text>
+    <text bg={PANEL}>
       <span fg={ACCENT}>{frames[i]} </span>
       <span fg={MUTED}>thinking…</span>
     </text>
@@ -197,7 +212,7 @@ const SHUTDOWN_LINES = [
 function BootLine({ line }: { line: string }) {
   if (line.startsWith("[ ok ]")) {
     return (
-      <text>
+      <text bg={PANEL}>
         <span fg={ACCENT}>[ ok ]</span>
         <span fg={MUTED}>{line.slice(6)}</span>
       </text>
@@ -205,15 +220,15 @@ function BootLine({ line }: { line: string }) {
   }
   if (line.startsWith("$")) {
     return (
-      <text>
+      <text bg={PANEL}>
         <span fg={ACCENT}>$</span>
         <span fg={INK}>{line.slice(1)}</span>
       </text>
     );
   }
   if (line === "ready." || line.startsWith("welcome") || line.startsWith("goodbye"))
-    return <text fg={ACCENT}>{line}</text>;
-  return <text fg={MUTED}>{line}</text>;
+    return <text bg={PANEL} fg={ACCENT}>{line}</text>;
+  return <text bg={PANEL} fg={MUTED}>{line}</text>;
 }
 
 function BootScreen({ lines, onDone }: { lines: string[]; onDone: () => void }) {
@@ -244,11 +259,11 @@ function BootScreen({ lines, onDone }: { lines: string[]; onDone: () => void }) 
       {lines.slice(0, n).map((l, i) => (
         <BootLine key={i} line={l} />
       ))}
-      <text>
+      <text bg={PANEL}>
         <span fg={ACCENT}>{blink ? "▋" : " "}</span>
       </text>
       <box style={{ flexGrow: 1 }} />
-      <text>
+      <text bg={PANEL}>
         <span fg={ACCENT}>{"▰".repeat(filled)}</span>
         <span fg={FAINT}>{"▱".repeat(Math.max(0, 24 - filled))}</span>
         <span fg={MUTED}>{`  ${Math.round((n / steps) * 100)}%`}</span>
@@ -257,16 +272,34 @@ function BootScreen({ lines, onDone }: { lines: string[]; onDone: () => void }) 
   );
 }
 
+// Two-way link between the TUI volume bar and the browser tab's ambient audio.
+// web.ts creates one per websocket session; ssh sessions have no audio, so no channel.
+export type VolumeChannel = {
+  get(): number;
+  set(v: number, source: "tui" | "client"): void;
+  subscribe(fn: (v: number) => void): () => void;
+  // visitor-driven playback: start a 30s preview in the tab (null stops it)
+  play(url: string | null): void;
+  // live frequency bands (bass→treble, 0..1) from the tab's analyser while a preview plays
+  feedAmp(v: number[]): void;
+  onAmp(fn: (v: number[]) => void): () => void;
+};
+
 export default function App({
   linkedIn,
   visit,
   distinctId,
   onExit,
+  volume,
+  pond = true,
 }: {
   linkedIn: LinkedInSnapshot;
   visit: VisitInfo;
   distinctId: string;
   onExit: () => void;
+  volume?: VolumeChannel;
+  // web sessions render the pond client-side on a canvas (web/pond.ts); ssh/local keep it here
+  pond?: boolean;
 }) {
   const [screen, setScreen] = useState<Screen>("home");
   const [booting, setBooting] = useState(true); // full-screen boot log on first mount
@@ -465,6 +498,18 @@ export default function App({
       return;
     }
     if (key.name === "q") return quit();
+    // home: ↑/↓ nudge the tab volume one rung, matching the bar's steps
+    if (screen === "home" && volume && (key.name === "up" || key.name === "down")) {
+      volume.set(volAtRung(rungOf(volume.get()) + (key.name === "up" ? 1 : -1)), "tui");
+      return;
+    }
+    // ←/→ cycle screens — except where the arrows already mean something: chat keeps them
+    // for the input caret (handled above), home's music browser owns them on web sessions
+    if (!(screen === "home" && volume) && (key.name === "left" || key.name === "right")) {
+      const i = SCREENS.indexOf(screen);
+      go(SCREENS[(i + (key.name === "right" ? 1 : -1) + SCREENS.length) % SCREENS.length]);
+      return;
+    }
     if (screen === "projects") {
       if (key.name === "up" || key.name === "k") {
         setSelected((s) => (s - 1 + projects.length) % projects.length);
@@ -485,18 +530,9 @@ export default function App({
   if (booting) {
     return <BootScreen key="boot" lines={BOOT_LINES} onDone={() => setBooting(false)} />;
   }
-  if (transition) {
-    return (
-      <BootScreen
-        key={transition}
-        lines={bootLinesFor(transition)}
-        onDone={() => {
-          setScreen(transition);
-          setTransition(null);
-        }}
-      />
-    );
-  }
+  // NOTE: the transition BootScreen is an opaque OVERLAY, not an early return — unmounting
+  // and remounting the main tree makes opentui mis-measure remounted text rows (the header
+  // row collapses to zero height and every screen shifts up one row until a resize).
 
   return (
     <box
@@ -504,21 +540,22 @@ export default function App({
       onMouseMove={(e: { x: number; y: number }) => {
         pondMouse.current = { x: e.x, y: e.y };
         // cap the queue so a fast cursor can't stockpile splash energy between wave ticks
-        if (pondMoveN.current++ % 2 === 0 && pondSplash.current.length < 64) pondSplash.current.push({ x: e.x, y: e.y, amp: 2.2 });
+        if (pondMoveN.current++ % 2 === 0 && pondSplash.current.length < SPLASH_CAP) pondSplash.current.push({ x: e.x, y: e.y, amp: MOVE_AMP });
       }}
       onMouseDown={(e: { x: number; y: number }) => {
-        if (pondSplash.current.length < 64) pondSplash.current.push({ x: e.x, y: e.y, amp: 6 });
+        if (pondSplash.current.length < SPLASH_CAP) pondSplash.current.push({ x: e.x, y: e.y, amp: DOWN_AMP });
       }}
       onMouseOut={() => {
         pondMouse.current = null;
       }}
     >
       {/* smaller koi on a phone so they don't bleed through the sparse, narrow content */}
-      <KoiPond width={termW} height={termH} scale={narrow ? 0.5 : 1} mouseRef={pondMouse} splashRef={pondSplash} />
+      {/* ponytail: when pond=false the root mouse handlers above still fill these refs; harmless, capped at 64 */}
+      {pond && <KoiPond width={termW} height={termH} scale={narrow ? 0.5 : 1} mouseRef={pondMouse} splashRef={pondSplash} />}
       <box style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%", flexDirection: "column", zIndex: 1 }}>
         <Header screen={screen} />
         <box style={{ flexGrow: 1, flexDirection: "column" }}>
-          {screen === "home" && <Home visit={visit} narrow={narrow} />}
+          {screen === "home" && <Home visit={visit} narrow={narrow} volume={volume} />}
           {screen === "projects" && <Projects selected={selected} onSelect={setSelected} />}
           {screen === "about" && <About linkedIn={linkedIn} />}
           {screen === "chat" && (
@@ -534,10 +571,22 @@ export default function App({
             />
           )}
         </box>
-        <Footer screen={screen} chatActive={chatActive} narrow={narrow} onNav={go} />
+        <Footer screen={screen} chatActive={chatActive} narrow={narrow} music={Boolean(volume)} onNav={go} />
       </box>
       {picker && (
         <ResumePicker items={picker.items} index={picker.index} mode={picker.mode} width={termW} height={termH} />
+      )}
+      {transition && (
+        <box style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%", zIndex: 50, backgroundColor: POND_BG_HEX }}>
+          <BootScreen
+            key={transition}
+            lines={bootLinesFor(transition)}
+            onDone={() => {
+              setScreen(transition);
+              setTransition(null);
+            }}
+          />
+        </box>
       )}
     </box>
   );
@@ -545,12 +594,13 @@ export default function App({
 
 function Header({ screen }: { screen: Screen }) {
   return (
-    <box style={{ flexDirection: "column" }}>
+    // flexShrink 0: if a screen's body ever overflows again, crush the body, never the header
+    <box style={{ flexDirection: "column", flexShrink: 0 }}>
       <box style={{ flexDirection: "row", justifyContent: "space-between", paddingLeft: 2, paddingRight: 2, paddingTop: 1 }}>
-        <text>
+        <text bg={PANEL}>
           <strong fg={INK}>xiao.sh</strong>
         </text>
-        <text>
+        <text bg={PANEL}>
           <span fg={FAINT}>{"~/"}</span>
           <span fg={ACCENT}>{screen}</span>
         </text>
@@ -569,7 +619,7 @@ function NavTab({ item, active, onNav }: { item: { key: string; screen: Screen }
         if (!active) onNav(item.screen);
       }}
     >
-      <text>
+      <text bg={PANEL}>
         <span fg={ACCENT}>{item.key}</span>
         <span fg={active ? INK : MUTED}>{` ${item.screen}`}</span>
       </text>
@@ -581,14 +631,22 @@ function Footer({
   screen,
   chatActive,
   narrow,
+  music,
   onNav,
 }: {
   screen: Screen;
   chatActive: boolean;
   narrow: boolean;
+  music: boolean; // home has the interactive music browser (web sessions) — arrows belong to it there
   onNav: (s: Screen) => void;
 }) {
-  const hint = chatActive ? "Enter send · Esc back" : screen === "projects" ? "↑↓ / j k move · q quit" : "q quit";
+  const hint = chatActive
+    ? "Enter send · Esc back"
+    : screen === "projects"
+      ? "↑↓ / j k move · ← → nav · q quit"
+      : screen === "home" && music
+        ? "← → tracks · ↑↓ vol · q quit"
+        : "← → nav · q quit";
   return (
     <box style={{ flexDirection: "column", paddingBottom: 1 }}>
       <Rule />
@@ -598,171 +656,21 @@ function Footer({
             <NavTab key={n.key} item={n} active={n.screen === screen} onNav={onNav} />
           ))}
         </box>
-        {!narrow && <text fg={MUTED}>{hint}</text>}
+        {!narrow && <text bg={PANEL} fg={MUTED}>{hint}</text>}
       </box>
     </box>
   );
 }
 
-// The pond paints straight into the renderer's cell buffers (raw typed-array views over
-// native memory — zero FFI, zero React reconciliation per frame). All colors are
-// precomputed once as the 4×u16 RGBA quads the native buffer stores.
+// The pond simulation lives in @/lib/pond (shared with the browser canvas renderer in
+// web/pond.ts). Server-side it paints straight into the renderer's cell buffers (raw
+// typed-array views over native memory — zero FFI, zero React reconciliation per frame).
+// All colors are precomputed once as the 4×u16 RGBA quads the native buffer stores.
 const u16 = (hex: string) => RGBA.fromHex(hex).buffer;
-
-// water surface: amplitude bucket -> glyph codepoint; color by intensity AND sign
-// (crest = bright cyan, trough = deep blue) for clear wave color contrast.
-const WATER_CP = [0x20, 0xb7 /*·*/, 0x2d9 /*˙*/, 0x7e /*~*/, 0x2248 /*≈*/];
-const WATER_CREST = [u16("#0e2329"), u16("#2f6b7a"), u16("#52a0b6"), u16("#86d6ec"), u16("#cdf2ff")];
-const WATER_TROUGH = [u16("#0e2329"), u16("#1d3c55"), u16("#274f72"), u16("#2c5f8c"), u16("#356fa6")];
-const POND_BG = u16(PANEL); // matches the terminal bg so the pond stays seamless
-
-// koi/lily palette — pixel buffer stores palette indices (0 = transparent)
-const C_WHITE = 1; // body base
-const C_FIN = 2;
-const C_ORANGE = 3;
-const C_RED = 4;
-const C_EYE = 5;
-const C_SUMI = 6; // Sanke's small black markings — dark slate
-const C_PAD = 7;
-const C_PETAL = 8;
-const C_FLOWER = 9;
-const PAL_U16: Uint16Array[] = [
-  new Uint16Array(4),
-  u16("#eef2f5"),
-  u16("#cdd6dc"),
-  u16("#ff8a3d"),
-  u16("#d94f28"),
-  u16("#0c1016"),
-  u16("#333c47"),
-  u16("#3f6e3a"),
-  u16("#f3a8c8"),
-  u16("#f2d36b"),
-];
-// koi rendered as ascii glyphs (not solid blocks), shaded by body coverage
-const CP_FULL = 0x23; // '#' both pixels covered
-const CP_HALF = 0x2a; // '*'
-const CP_EYE = 0x2022; // '•'
-const N_COILS = 12;
-const COIL_SP = 3.0; // px between body coils (shorter body = less snake-like)
-const MAX_BEND = 0.22; // max bend per joint (rad) — keeps the body fish-stiff, not snake-curly
-
-const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
-
-// body width profile: slim koi (tapered head/tail), scaled per fish
-function coilRadius(i: number, size = 1) {
-  const t = i / (N_COILS - 1);
-  return (1.0 + 3.7 * Math.sin(t * Math.PI) + (t < 0.16 ? 0.8 : 0)) * size;
-}
-// a blotch: which spine coil, palette color, size ratio of the body radius, sideways offset
-type Blotch = { i: number; col: number; dr: number; off: number };
-// one koi variety: body base color, fin color, and its overlaid blotches
-type KoiVariety = { name: string; base: number; fin: number; blotches: Blotch[] };
-const KOI_VARIETIES: KoiVariety[] = [
-  // Kōhaku — white body, large red/orange markings
-  {
-    name: "kohaku",
-    base: C_WHITE,
-    fin: C_FIN,
-    blotches: [
-      { i: 3, col: C_RED, dr: 0.95, off: -0.2 },
-      { i: 6, col: C_ORANGE, dr: 0.8, off: 0.3 },
-      { i: 9, col: C_RED, dr: 0.7, off: -0.3 },
-    ],
-  },
-  // Sanke — white base, red plus small black markings
-  {
-    name: "sanke",
-    base: C_WHITE,
-    fin: C_FIN,
-    blotches: [
-      { i: 3, col: C_RED, dr: 0.9, off: -0.15 },
-      { i: 6, col: C_RED, dr: 0.7, off: 0.35 },
-      { i: 5, col: C_SUMI, dr: 0.42, off: -0.55 },
-      { i: 8, col: C_SUMI, dr: 0.36, off: 0.45 },
-    ],
-  },
-];
-
-// lily pads (fractions of pond w/h, radius px) — drawn above koi, below text.
-// each has a wedge slice removed (notch center angle + half-width); one bears a flower.
-const LILY_PADS = [
-  { fx: 0.86, fy: 0.2, r: 10, notch: 2.4, notchW: 0.4, flower: true }, // top-right (acute slice)
-  { fx: 0.88, fy: 0.82, r: 11, notch: -2.3, notchW: 0.45, flower: false }, // bottom-right
-  { fx: 0.12, fy: 0.84, r: 8, notch: -0.8, notchW: 0.35, flower: false }, // bottom-left
-];
-
-type KoiState = {
-  s: number;
-  spd: number;
-  size: number;
-  cx: number;
-  cy: number;
-  ax: number;
-  ay: number;
-  ph: number;
-  variety: KoiVariety;
-  spine: { x: number; y: number }[];
-};
-
-// Wave-propagation hot loop. Plain JS: JSC's JIT vectorises this tight typed-array
-// loop and there's no per-frame FFI marshalling (which added steady small GC hitches).
-// Writes the next field into `prev` from `cur`'s neighbours; caller swaps.
-// Anisotropic: horizontal coupling 4x vertical (terminal cells are ~2:1 tall) so a
-// ripple renders as a circle on screen instead of a vertical ellipse.
-function waveStep(cur: Float32Array, prev: Float32Array, w: number, h: number, damp: number): void {
-  for (let y = 1; y < h - 1; y += 1) {
-    const row = y * w;
-    for (let x = 1; x < w - 1; x += 1) {
-      const i = row + x;
-      prev[i] = (0.75 * cur[i] - prev[i] + 0.5 * (cur[i - 1] + cur[i + 1]) + 0.125 * (cur[i - w] + cur[i + w])) * damp;
-    }
-  }
-}
-
-// pixel-raster helpers over the koi half-block buffer (palette indices, 0 = transparent)
-function diskPx(buf: Uint8Array, pw: number, ph: number, cx: number, cy: number, r: number, col: number): void {
-  const r2 = r * r;
-  const y0 = Math.max(0, Math.floor(cy - r));
-  const y1 = Math.min(ph - 1, Math.ceil(cy + r));
-  const x0 = Math.max(0, Math.floor(cx - r));
-  const x1 = Math.min(pw - 1, Math.ceil(cx + r));
-  for (let yy = y0; yy <= y1; yy += 1)
-    for (let xx = x0; xx <= x1; xx += 1) {
-      const dx = xx - cx;
-      const dy = yy - cy;
-      if (dx * dx + dy * dy <= r2) buf[yy * pw + xx] = col;
-    }
-}
-function triPx(
-  buf: Uint8Array,
-  pw: number,
-  ph: number,
-  ax2: number,
-  ay2: number,
-  bx2: number,
-  by2: number,
-  cx3: number,
-  cy3: number,
-  col: number,
-): void {
-  const minx = Math.max(0, Math.floor(Math.min(ax2, bx2, cx3)));
-  const maxx = Math.min(pw - 1, Math.ceil(Math.max(ax2, bx2, cx3)));
-  const miny = Math.max(0, Math.floor(Math.min(ay2, by2, cy3)));
-  const maxy = Math.min(ph - 1, Math.ceil(Math.max(ay2, by2, cy3)));
-  const den = (by2 - cy3) * (ax2 - cx3) + (cx3 - bx2) * (ay2 - cy3);
-  if (Math.abs(den) < 1e-6) return;
-  for (let yy = miny; yy <= maxy; yy += 1)
-    for (let xx = minx; xx <= maxx; xx += 1) {
-      const w1 = ((by2 - cy3) * (xx - cx3) + (cx3 - bx2) * (yy - cy3)) / den;
-      const w2 = ((cy3 - ay2) * (xx - cx3) + (ax2 - cx3) * (yy - cy3)) / den;
-      if (w1 >= 0 && w2 >= 0 && w1 + w2 <= 1) buf[yy * pw + xx] = col;
-    }
-}
-function setPx(buf: Uint8Array, pw: number, ph: number, x: number, y: number, col: number): void {
-  const xi = Math.round(x);
-  const yi = Math.round(y);
-  if (xi >= 0 && yi >= 0 && xi < pw && yi < ph) buf[yi * pw + xi] = col;
-}
+const WATER_CREST = WATER_CREST_HEX.map(u16);
+const WATER_TROUGH = WATER_TROUGH_HEX.map(u16);
+const POND_BG = u16(POND_BG_HEX); // matches the terminal bg so the pond stays seamless
+const PAL_U16: Uint16Array[] = [new Uint16Array(4), ...PAL_HEX.slice(1).map(u16)];
 
 // Full-screen koi pond behind all content; koi swim in from the edges, flee the cursor;
 // cursor/koi leave wave-sim ripples. Mouse + splashes are fed in from the App root.
@@ -784,296 +692,28 @@ export function KoiPond({
 }) {
   const W = Math.max(10, width);
   const H = Math.max(6, height);
-  const PW = W;
-  const PH = H * 2; // pixel rows (half-block)
-  const koi = useRef<KoiState[]>([]);
-  const hCur = useRef<Float32Array | null>(null);
-  const hPrev = useRef<Float32Array | null>(null);
-  // koi pixel scratch buffer reused every frame (allocated once per size)
-  const pxRef = useRef<Uint8Array | null>(null);
-  const waveAcc = useRef(0);
-
-  if (!hCur.current || hCur.current.length !== W * H) {
-    hCur.current = new Float32Array(W * H);
-    hPrev.current = new Float32Array(W * H);
-  }
-  if (!pxRef.current || pxRef.current.length !== PW * PH) {
-    pxRef.current = new Uint8Array(PW * PH);
+  // shared sim (same code drives the browser canvas); recreated on resize — koi
+  // re-enter from the edges, which reads as the intentional swim-in intro
+  const simRef = useRef<PondSim | null>(null);
+  if (!simRef.current || simRef.current.W !== W || simRef.current.H !== H || simRef.current.scale !== scale) {
+    simRef.current = new PondSim(W, H, scale);
   }
 
   const draw = useCallback(
     (buffer: OptimizedBuffer, deltaMs: number) => {
-      const margin = 12;
-      // each koi swims its own wandering loop (own center / amplitude / phase / speed)
-      function leadFor(k: KoiState, s: number) {
-        return {
-          x: clamp(k.cx + k.ax * Math.sin(s + k.ph) + k.ax * 0.33 * Math.sin(2.7 * s + k.ph + 1.3), margin, PW - margin),
-          y: clamp(k.cy + k.ay * Math.cos(0.9 * s + k.ph) + k.ay * 0.42 * Math.sin(1.6 * s + k.ph + 0.5), margin, PH - margin),
-        };
-      }
-      if (koi.current.length === 0) {
-        const defs: Omit<KoiState, "s" | "spine">[] = [
-          { spd: 0.018, size: 1.0, cx: PW * 0.42, cy: PH * 0.5, ax: PW * 0.3, ay: PH * 0.26, ph: 0, variety: KOI_VARIETIES[0] },
-          { spd: 0.023, size: 0.8, cx: PW * 0.6, cy: PH * 0.42, ax: PW * 0.24, ay: PH * 0.22, ph: 2.1, variety: KOI_VARIETIES[1] },
-        ];
-        koi.current = defs.map((d) => {
-          const k: KoiState = { ...d, size: d.size * scale, s: d.ph, spine: [] };
-          // start just off a random edge, body trailing further off-screen → swims in
-          const edge = Math.floor(Math.random() * 4);
-          let hx = 0;
-          let hy = 0;
-          let dx = 0;
-          let dy = 0;
-          if (edge === 0) {
-            hx = Math.random() * PW;
-            hy = -3;
-            dy = -1;
-          } else if (edge === 1) {
-            hx = Math.random() * PW;
-            hy = PH + 3;
-            dy = 1;
-          } else if (edge === 2) {
-            hx = -3;
-            hy = Math.random() * PH;
-            dx = -1;
-          } else {
-            hx = PW + 3;
-            hy = Math.random() * PH;
-            dx = 1;
-          }
-          k.spine = Array.from({ length: N_COILS }, (_, i) => ({ x: hx + dx * i * COIL_SP, y: hy + dy * i * COIL_SP }));
-          return k;
-        });
-      }
-      // koi kinematics run per frame; physics constants were tuned at a 33ms tick, so
-      // `n` rescales the increments — 60fps doesn't double swim speed.
-      const n = Math.min(deltaMs, 100) / 33;
-      const ease = 1 - Math.pow(0.84, n); // 0.16 per 33ms tick
-      const m = mouseRef.current;
-      for (const k of koi.current) {
-        k.s += k.spd * n;
-        const target = leadFor(k, k.s);
-        const head = k.spine[0];
-        if (m) {
-          const dx = head.x - m.x;
-          const dy = head.y - m.y * 2;
-          const d = Math.hypot(dx, dy);
-          if (d < 24 && d > 0.001) {
-            const f = (24 - d) * 0.5;
-            target.x += (dx / d) * f;
-            target.y += (dy / d) * f;
-          }
-        }
-        // separation: steer away from the nearest part of every other koi
-        for (const o of koi.current) {
-          if (o === k || o.spine.length === 0) continue;
-          let best = Infinity;
-          let bx = 0;
-          let by = 0;
-          for (const sp of o.spine) {
-            const dd = (head.x - sp.x) ** 2 + (head.y - sp.y) ** 2;
-            if (dd < best) {
-              best = dd;
-              bx = sp.x;
-              by = sp.y;
-            }
-          }
-          const sd = Math.sqrt(best);
-          const sr = 5 * k.size + 5 * o.size + 5;
-          if (sd < sr && sd > 0.001) {
-            const f = (sr - sd) * 0.9;
-            target.x += ((head.x - bx) / sd) * f;
-            target.y += ((head.y - by) / sd) * f;
-          }
-        }
-        // ease toward target but cap speed → natural constant-glide swim-in from edges
-        const ex = (target.x - head.x) * ease;
-        const ey = (target.y - head.y) * ease;
-        const es = Math.hypot(ex, ey) || 1;
-        const maxStep = 1.1 * n;
-        const stepScale = es > maxStep ? maxStep / es : 1;
-        head.x += ex * stepScale;
-        head.y += ey * stepScale;
-        // follow chain with per-joint bend limit (fish-stiff, not snake-curly)
-        for (let i = 1; i < N_COILS; i += 1) {
-          const a = k.spine[i - 1];
-          const b = k.spine[i];
-          let ang = Math.atan2(b.y - a.y, b.x - a.x);
-          if (i >= 2) {
-            const p2 = k.spine[i - 2];
-            const prevA = Math.atan2(a.y - p2.y, a.x - p2.x);
-            let diff = ang - prevA;
-            while (diff > Math.PI) diff -= 2 * Math.PI;
-            while (diff < -Math.PI) diff += 2 * Math.PI;
-            if (diff > MAX_BEND) ang = prevA + MAX_BEND;
-            else if (diff < -MAX_BEND) ang = prevA - MAX_BEND;
-          }
-          b.x = a.x + Math.cos(ang) * COIL_SP;
-          b.y = a.y + Math.sin(ang) * COIL_SP;
-        }
-      }
-      // water height-field: wave propagation + damping (double-buffered) on a fixed
-      // 30Hz clock — the stencil's wave speed and damping are per-step, so stepping
-      // per frame would tie ripple physics to fps. 0.93 damping → tighter ripples.
-      const splashAt = (x: number, y: number, amp: number) => {
-        const xi = Math.round(x);
-        const yi = Math.round(y);
-        if (xi < 1 || yi < 1 || xi >= W - 1 || yi >= H - 1) return;
-        hCur.current![yi * W + xi] -= amp;
-      };
-      waveAcc.current += Math.min(deltaMs, 100);
-      let steps = 0;
-      while (waveAcc.current >= 33 && steps < 4) {
-        waveAcc.current -= 33;
-        steps += 1;
-        const cur = hCur.current!;
-        const prev = hPrev.current!;
-        waveStep(cur, prev, W, H, 0.93);
-        hCur.current = prev;
-        hPrev.current = cur;
-        // queued cursor splashes (fed from the App root mouse handler)
-        const q = splashRef.current;
-        for (let i = 0; i < q.length; i += 1) splashAt(q[i].x, q[i].y, q[i].amp);
-        q.length = 0;
-        // gentle koi wakes
-        for (const k of koi.current) {
-          splashAt(k.spine[0].x, k.spine[0].y / 2, 0.18);
-          splashAt(k.spine[N_COILS - 1].x, k.spine[N_COILS - 1].y / 2, 0.12);
-        }
-      }
-      if (waveAcc.current >= 33) waveAcc.current = 0; // stalled — drop the backlog
-
-      // koi: rasterize the body chain into the pixel buffer (palette indices)
-      const buf = pxRef.current!;
-      buf.fill(0);
-      const disk = (cx2: number, cy2: number, r: number, col: number) => diskPx(buf, PW, PH, cx2, cy2, r, col);
-      const triFill = (ax2: number, ay2: number, bx2: number, by2: number, cx3: number, cy3: number, col: number) =>
-        triPx(buf, PW, PH, ax2, ay2, bx2, by2, cx3, cy3, col);
-      const setpx = (x: number, y: number, col: number) => setPx(buf, PW, PH, x, y, col);
-
-      for (const k of koi.current) {
-        const spine = k.spine;
-        if (!spine.length) continue;
-        const size = k.size;
-        const v = k.variety;
-
-        // body: variety base color + its overlaid blotches (no full-width stripes)
-        for (let i = N_COILS - 1; i >= 0; i -= 1) disk(spine[i].x, spine[i].y, coilRadius(i, size), v.base);
-        for (const b of v.blotches) {
-          const c = spine[b.i];
-          const cp = spine[b.i - 1];
-          const dl = Math.hypot(c.x - cp.x, c.y - cp.y) || 1;
-          const ppx = -(c.y - cp.y) / dl;
-          const ppy = (c.x - cp.x) / dl;
-          const r = coilRadius(b.i, size);
-          disk(c.x + ppx * b.off * r, c.y + ppy * b.off * r, r * b.dr, b.col);
-        }
-
-        // tail: a short forked caudal fin, then long thin whiskers trailing from each lobe
-        // tip. The whiskers run ~half the body length and undulate in sync with the swim
-        // (same wavyness as the fish) — only the whisker ends are long, not the whole fin.
-        const t0 = spine[N_COILS - 1];
-        const t1 = spine[N_COILS - 2];
-        const tl = Math.hypot(t0.x - t1.x, t0.y - t1.y) || 1;
-        const ux = (t0.x - t1.x) / tl; // backward, away from the head
-        const uy = (t0.y - t1.y) / tl;
-        const px = -uy; // lateral (perpendicular to the body axis)
-        const py = ux;
-        const bx0 = t0.x + ux * 1.6 * size;
-        const by0 = t0.y + uy * 1.6 * size;
-        const swim = k.s * 4; // shared swim phase → tail + whiskers share the body's wavyness
-        const sway = Math.sin(swim) * 3.0 * size;
-        const finLenT = 5 * size; // the solid fork stays short
-        const whiskLen = N_COILS * COIL_SP * 0.35 * size; // whiskers ~a third of the fish length
-        for (const lobe of [1, -1]) {
-          // barely-forked: both lobes hug the centerline and ride the same sway, so the
-          // pair reads as one flowing caudal fin (real koi) instead of two split streamers
-          const spread = lobe * 0.9 * size + sway;
-          const apx = bx0 + ux * finLenT + px * spread;
-          const apy = by0 + uy * finLenT + py * spread;
-          triFill(bx0 + px * 0.7, by0 + py * 0.7, bx0 - px * 0.7, by0 - py * 0.7, apx, apy, v.base);
-          // wavy whisker from the lobe tip: same amplitude as the tail sway with a gentle
-          // phase lag along the length, so fork → tip reads as ONE traveling wave (the old
-          // 3.5-rad lag put the tip near-antiphase — whiskers looked detached from the tail)
-          for (let s2 = 1; s2 <= 12; s2 += 1) {
-            const f = s2 / 12;
-            const along = f * whiskLen;
-            const wave = Math.sin(swim - f * 1.8) * 3.0 * size * f; // grows root→tip, trails the sway
-            const wx = apx + ux * along + px * wave;
-            const wy = apy + uy * along + py * wave;
-            disk(wx, wy, Math.max(0.4, (1 - f) * 1.0 * size + 0.3), v.fin);
-          }
-        }
-
-        // pectoral fins: triangles swept back toward the tail
-        const mi = 3;
-        const mc = spine[mi];
-        const mp = spine[mi - 1];
-        const ml = Math.hypot(mc.x - mp.x, mc.y - mp.y) || 1;
-        const tx = (mc.x - mp.x) / ml;
-        const ty = (mc.y - mp.y) / ml;
-        const fpx = -ty;
-        const fpy = tx;
-        const flap = 1 + Math.sin(k.s * 5 + 1) * 0.35;
-        const r0 = coilRadius(mi, size);
-        const finLen = 6 * size;
-        const finOut = 4.5 * flap * size;
-        for (const side of [1, -1]) {
-          const rfx = mc.x + fpx * side * r0 * 0.7 - tx * 2;
-          const rfy = mc.y + fpy * side * r0 * 0.7 - ty * 2;
-          const rbx = mc.x + fpx * side * r0 * 0.7;
-          const rby = mc.y + fpy * side * r0 * 0.7;
-          const tipx = mc.x + tx * finLen + fpx * side * (r0 + finOut);
-          const tipy = mc.y + ty * finLen + fpy * side * (r0 + finOut);
-          triFill(rfx, rfy, rbx, rby, tipx, tipy, v.fin);
-        }
-
-        // eyes near the head
-        const h0 = spine[0];
-        const h1 = spine[1];
-        const hl = Math.hypot(h0.x - h1.x, h0.y - h1.y) || 1;
-        const epx = -(h0.y - h1.y) / hl;
-        const epy = (h0.x - h1.x) / hl;
-        const eo = 1.7 * size;
-        setpx(h0.x + epx * eo, h0.y + epy * eo, C_EYE);
-        setpx(h0.x - epx * eo, h0.y - epy * eo, C_EYE);
-      }
-
-      // lily pads: drawn AFTER koi (so koi swim under them), gently bobbing, with a flower
-      const padTime = koi.current[0]?.s ?? 0;
-      LILY_PADS.forEach((p, i) => {
-        const cxp = p.fx * PW;
-        const cyp = p.fy * PH + Math.sin(padTime * 1.4 + i) * 0.35;
-        // draw the pad as a disk MINUS the wedge — the notch is never painted, so koi
-        // (drawn earlier) stay visible through the cut instead of being erased
-        const r2 = p.r * p.r;
-        const y0 = Math.max(0, Math.floor(cyp - p.r));
-        const y1 = Math.min(PH - 1, Math.ceil(cyp + p.r));
-        const x0 = Math.max(0, Math.floor(cxp - p.r));
-        const x1 = Math.min(PW - 1, Math.ceil(cxp + p.r));
-        for (let yy = y0; yy <= y1; yy += 1)
-          for (let xx = x0; xx <= x1; xx += 1) {
-            const dx = xx - cxp;
-            const dy = yy - cyp;
-            if (dx * dx + dy * dy > r2) continue;
-            let diff = Math.atan2(dy, dx) - p.notch;
-            while (diff > Math.PI) diff -= 2 * Math.PI;
-            while (diff < -Math.PI) diff += 2 * Math.PI;
-            if (Math.abs(diff) < p.notchW) continue; // skip the wedge → leave koi/water
-            buf[yy * PW + xx] = C_PAD;
-          }
-        // flower on the one designated pad: 5 petals + center
-        if (p.flower) {
-          for (let k = 0; k < 5; k += 1) {
-            const a = (k * 2 * Math.PI) / 5 - 1.2;
-            disk(cxp + Math.cos(a) * 2.4, cyp + Math.sin(a) * 2.4, 1.4, C_PETAL);
-          }
-          disk(cxp, cyp, 1.3, C_FLOWER);
-        }
-      });
+      const sim = simRef.current!;
+      // feed inputs from the App-root refs, then advance the shared simulation
+      sim.mouse = mouseRef.current;
+      const q = splashRef.current;
+      for (let i = 0; i < q.length; i += 1) sim.splash(q[i].x, q[i].y, q[i].amp);
+      q.length = 0;
+      sim.step(deltaMs);
 
       // composite water + koi straight into the renderer's raw cell buffers: one glyph
       // per cell, koi shaded by coverage of its two half-block pixels
+      const buf = sim.px;
+      const field = sim.field;
+      const PW = sim.PW;
       const raw = buffer.buffers;
       const bw = buffer.width;
       const cw = Math.min(W, bw);
@@ -1082,7 +722,6 @@ export function KoiPond({
       const fgB = raw.fg;
       const bgB = raw.bg;
       const atB = raw.attributes;
-      const field = hCur.current!;
       for (let y = 0; y < chRows; y += 1) {
         const rowOff = y * bw;
         const top0 = 2 * y * PW;
@@ -1098,8 +737,7 @@ export function KoiPond({
             col = PAL_U16[idx];
           } else {
             const v = field[y * W + x];
-            const a = v < 0 ? -v : v;
-            const bkt = a < 0.07 ? 0 : a > 0.6 ? 4 : a > 0.32 ? 3 : a > 0.16 ? 2 : 1;
+            const bkt = waterBucket(v < 0 ? -v : v);
             cp = WATER_CP[bkt];
             col = v > 0 ? WATER_CREST[bkt] : WATER_TROUGH[bkt];
           }
@@ -1118,7 +756,7 @@ export function KoiPond({
         }
       }
     },
-    [W, H, PW, PH, scale, mouseRef, splashRef],
+    [W, H, mouseRef, splashRef],
   );
 
   // `live` keeps the renderer's frame loop running so renderAfter fires every frame
@@ -1183,29 +821,23 @@ function VisitorHead({ total }: { total: number }) {
   );
 }
 
+// the GITHUB stats row as plain text — its width anchors the music controls' alignment
+// (the » lands on the ★ column)
+function ghStatsWidth(g: GitHubPulse): number {
+  return `${compactNum(g.commits)} commits${SEP}${compactNum(g.contributions)} contributions${SEP}${compactNum(g.stars)}★`.length;
+}
+
 // GitHub pulse: followers · repos · stars + last push
-function GitHubPulse() {
-  const [g, setG] = useState<GitHubPulse | null>(null);
-  useEffect(() => {
-    let alive = true;
-    getGitHub()
-      .then((d) => {
-        if (alive) setG(d);
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, []);
+function GitHubPulse({ g }: { g: GitHubPulse | null }) {
   return (
     <Stat label="GITHUB" meta={g?.lastPushAt ? `pushed ${timeAgo(g.lastPushAt)}` : undefined}>
       {g ? (
         <text bg={PANEL}>
-          <span fg={INK}>{compactNum(g.followers)}</span>
-          <span fg={MUTED}>{" followers"}</span>
+          <span fg={INK}>{compactNum(g.commits)}</span>
+          <span fg={MUTED}>{" commits"}</span>
           <span fg={FAINT}>{SEP}</span>
-          <span fg={INK}>{g.repos}</span>
-          <span fg={MUTED}>{" repos"}</span>
+          <span fg={INK}>{compactNum(g.contributions)}</span>
+          <span fg={MUTED}>{" contributions"}</span>
           <span fg={FAINT}>{SEP}</span>
           <span fg={ACCENT}>{`${compactNum(g.stars)}★`}</span>
         </text>
@@ -1257,7 +889,7 @@ function VisitorChart({ data }: { data: number[] }) {
       else spans.push({ fg: cell.fg, bg: cell.bg, text: cell.ch });
     }
     return (
-      <text key={rowIdx}>
+      <text key={rowIdx} bg={PANEL}>
         {spans.map((s, k) => (
           <span key={k} fg={s.fg} bg={s.bg}>
             {s.text}
@@ -1270,8 +902,8 @@ function VisitorChart({ data }: { data: number[] }) {
   return (
     <box style={{ flexDirection: "column" }}>
       {rowsOut}
-      <text fg={FAINT}>{"─".repeat(W)}</text>
-      <text fg={FAINT}>{span}</text>
+      <text bg={PANEL} fg={FAINT}>{"─".repeat(W)}</text>
+      <text bg={PANEL} fg={FAINT}>{span}</text>
     </box>
   );
 }
@@ -1307,17 +939,130 @@ function ProgressBar({ progress, duration }: { progress: number; duration: numbe
   );
 }
 
+// left-anchored eighth blocks — the vertical bar's cells pulse in width, not height
+const HBARS = "▏▎▍▌▋▊▉█";
+
+// The horizontal volume bar rotated 90°: same shimmering ramp cells, stacked bottom-up,
+// with the cell fill direction rotated too (cells widen instead of rise).
+// Click a rung to set the level, click the ♪ to mute. Position uses the same square curve
+// as the audio side (position = sqrt(volume)) for fine control at the quiet end.
+// Exported for nowplaying.test.tsx.
+// bar geometry + rung→volume mapping shared by click/drag/scroll/arrow-key paths
+export const VOL_RUNGS = 8;
+export function rungOf(vol: number): number {
+  return Math.round(Math.sqrt(Math.max(0, Math.min(1, vol))) * VOL_RUNGS);
+}
+export function volAtRung(rung: number): number {
+  return (Math.max(0, Math.min(VOL_RUNGS, rung)) / VOL_RUNGS) ** 2;
+}
+
+export function VolumeBar({ channel }: { channel: VolumeChannel }) {
+  const [vol, setVol] = useState(channel.get());
+  const [t, setT] = useState(0);
+  // live analyser bands from the tab while a preview plays; stale data (>500ms) means the
+  // music stopped, so the sine animation takes back over
+  const [amp, setAmp] = useState<{ v: number[]; at: number } | null>(null);
+  // where the drag started: the rung grabbed and the screen row it was at.
+  // dragging N rows up from there = N rungs louder — no layout math needed.
+  const drag = useRef<{ rung: number; y: number } | null>(null);
+  useEffect(() => channel.subscribe(setVol), [channel]);
+  useEffect(() => channel.onAmp((v) => setAmp({ v, at: Date.now() })), [channel]);
+  useEffect(() => {
+    const id = setInterval(() => setT((n) => n + 1), 90);
+    return () => clearInterval(id);
+  }, []);
+  const live = amp && Date.now() - amp.at < 500 ? amp.v : null;
+  const H = VOL_RUNGS;
+  const sqrtVol = Math.sqrt(Math.max(0, Math.min(1, vol)));
+  const pos = Math.round(sqrtVol * H); // filled rungs, from the bottom
+  const onDrag = (e: { y: number }) => {
+    const d = drag.current;
+    if (!d) return;
+    channel.set(volAtRung(d.rung + (d.y - e.y)), "tui");
+  };
+  const nudge = (dir: 1 | -1) => channel.set(volAtRung(rungOf(channel.get()) + dir), "tui");
+  // every row is exactly 5 cells with manual centering: the bar is 3 cells (odd), so the
+  // single-glyph ♪/▲/▼ and a 3-char "NN%" sit dead-center over it — no half-cell drift
+  const pad5 = (s: string) => {
+    const left = Math.floor((5 - s.length) / 2);
+    return " ".repeat(Math.max(0, left)) + s + " ".repeat(Math.max(0, 5 - s.length - left));
+  };
+  return (
+    <box
+      style={{ flexDirection: "column", alignItems: "flex-start" }}
+      onMouseScroll={(e: { scroll?: { direction: string } }) => {
+        if (e.scroll?.direction === "up") nudge(1);
+        else if (e.scroll?.direction === "down") nudge(-1);
+      }}
+    >
+      <box onMouseDown={(e: { y: number }) => { drag.current = { rung: 0, y: e.y }; channel.set(0, "tui"); }} onMouseDrag={onDrag}>
+        <text bg={PANEL} fg={FAINT}>{pad5("♪")}</text>
+      </box>
+      <box onMouseDown={() => nudge(1)}>
+        <text bg={PANEL} fg={MUTED}>{pad5("▲")}</text>
+      </box>
+      {Array.from({ length: H }, (_, i) => {
+        const rung = H - i; // the level this row represents, in rows from the bottom
+        const on = rung <= pos;
+        // every rung waves; the level only decides the color (green below, greyed above).
+        // with live analyser data the rungs track the music (bass at the bottom); otherwise
+        // a dominant traveling sine (wavelength ≈ the whole bar) with a small counter-phase
+        // ripple: crests sweep the full 3-col width, troughs thin to a sliver — no clipping.
+        const wave = live
+          ? live[rung - 1] ?? 0
+          : (0.85 * Math.sin(t * 0.3 + rung * 0.5) + 0.15 * Math.sin(t * 0.19 - rung * 0.33)) * 0.5 + 0.5;
+        // 3 cells filled continuously in 24 eighths
+        let e8 = Math.max(1, Math.round(1 + wave * 23));
+        let cells = "";
+        for (let c = 0; c < 3; c += 1) {
+          const take = Math.max(0, Math.min(8, e8));
+          cells += take === 8 ? "█" : take > 0 ? HBARS[take - 1] : " ";
+          e8 -= 8;
+        }
+        return (
+          <box
+            key={i}
+            onMouseDown={(e: { y: number }) => { drag.current = { rung, y: e.y }; channel.set(volAtRung(rung), "tui"); }}
+            onMouseDrag={onDrag}
+          >
+            <text bg={PANEL} fg={on ? ACCENT : FAINT}>{` ${cells} `}</text>
+          </box>
+        );
+      })}
+      <box onMouseDown={() => nudge(-1)}>
+        <text bg={PANEL} fg={MUTED}>{pad5("▼")}</text>
+      </box>
+      {/* fixed 5-wide label: 0% -> 100% never resizes or re-centers anything */}
+      <text bg={PANEL} fg={FAINT}>{pad5(`${Math.round(sqrtVol * 100)}%`)}</text>
+    </box>
+  );
+}
+
 // Spotify now-playing / recently-played. Polls server-side; hides entirely if Spotify isn't configured.
-function NowPlaying() {
+// When idle, `volume` (web sessions) enables visitor playback: « ▶ » controls under the list
+// play the 30s previews of my recent tracks in the visitor's tab.
+// Exported for nowplaying.test.tsx.
+export function NowPlaying({ volume, controlsWidth }: { volume?: VolumeChannel; controlsWidth?: number }) {
   const [state, setState] = useState<SpotifyState | null>(null);
+  const [fetchedAt, setFetchedAt] = useState(0); // when progressMs was fetched, for per-second interpolation
+  const [now, setNow] = useState(() => Date.now());
+  const loadRef = useRef<() => void>(() => {});
+  const endRefetched = useRef(false); // one end-of-track refetch per poll, so we never loop
   useEffect(() => {
     let alive = true;
     const load = () =>
       getSpotify()
         .then((s) => {
-          if (alive) setState(s);
+          if (alive) {
+            setState(s);
+            setFetchedAt(Date.now());
+            setNow(Date.now());
+            // re-arm only when the fresh poll isn't already sitting at the end of the track
+            endRefetched.current = s.progressMs != null && s.durationMs != null && s.progressMs >= s.durationMs;
+          }
         })
         .catch(() => {});
+    loadRef.current = load;
     load();
     const id = setInterval(load, 10_000);
     return () => {
@@ -1325,12 +1070,89 @@ function NowPlaying() {
       clearInterval(id);
     };
   }, []);
+  const isPlaying = Boolean(state?.isPlaying && state.current);
+  // visitor playback (idle only): which recent track is loaded and whether it's sounding
+  const [sel, setSel] = useState(0);
+  const [listening, setListening] = useState(false);
+  const [listenStart, setListenStart] = useState(0); // when the current preview started (30s loop)
+  useEffect(() => {
+    if (!isPlaying && !listening) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [isPlaying, listening]);
+  const stopListen = useCallback(() => {
+    volume?.play(null);
+    setListening(false);
+  }, [volume]);
+  // my live playback taking over kills visitor playback (the client audio switches anyway)
+  useEffect(() => {
+    if (isPlaying && listening) setListening(false);
+  }, [isPlaying, listening]);
+  // the idle list the visitor can browse (same slice the idle render shows)
+  const idleList = !isPlaying && state?.configured ? state.recent.slice(0, 6) : [];
+  // resolve the track's preview server-side (this component runs on the server) and ship it
+  // to the visitor's tab over the volume channel
+  const startListen = (n: number) => {
+    if (!volume || idleList.length === 0) return;
+    const m = ((n % idleList.length) + idleList.length) % idleList.length;
+    const id = idleList[m]?.track.songUrl?.split("/track/")[1]?.split("?")[0];
+    if (!id) return;
+    getPreviewUrl(id)
+      .then((url) => {
+        if (url) {
+          volume.play(url);
+          setSel(m);
+          setListening(true);
+          setListenStart(Date.now());
+          setNow(Date.now());
+        }
+      })
+      .catch(() => {});
+  };
+  // « / » / ←→: move the selection down the list as rendered (right/» = down = older);
+  // switch playback immediately if something is already sounding
+  const moveSel = (d: 1 | -1) => {
+    if (idleList.length === 0) return;
+    const n = (sel + d + idleList.length) % idleList.length;
+    setSel(n);
+    if (listening) startListen(n);
+  };
+  useKeyboard((key) => {
+    if (!volume || isPlaying || idleList.length === 0) return;
+    if (key.name === "left") return moveSel(-1);
+    if (key.name === "right") return moveSel(1);
+    if (key.name === "space" || key.sequence === " ") {
+      if (listening) stopListen();
+      else startListen(sel);
+    }
+  });
+  // radio mode: when the 30s preview runs out, roll to the next track (once per start)
+  const advancedFor = useRef(0);
+  useEffect(() => {
+    if (!listening || isPlaying) return;
+    if (now - listenStart >= 30_000 && advancedFor.current !== listenStart) {
+      advancedFor.current = listenStart;
+      startListen(sel + 1);
+    }
+  });
+  // displayed progress advances between 10s polls; refetch once when the track runs out
+  const shownProgress =
+    state?.progressMs != null && state.durationMs
+      ? Math.min(state.durationMs, state.progressMs + Math.max(0, now - fetchedAt))
+      : null;
+  useEffect(() => {
+    if (shownProgress != null && state?.durationMs && shownProgress >= state.durationMs && !endRefetched.current) {
+      endRefetched.current = true;
+      loadRef.current();
+    }
+  }, [shownProgress, state]);
   if (!state || !state.configured) return null;
   const playing = state.isPlaying && state.current ? state.current : null;
-  // 4 songs total: playing → current + 3 previous; idle → 4 most-recent
+  // playing → 2 previous + current + 2 up next; idle → 6 most-recent
   const previous = state.recent
     .filter((e) => !playing || e.track.name !== playing.name)
-    .slice(0, playing ? 3 : 4);
+    .slice(0, playing ? 2 : 6);
+  if (playing) previous.reverse(); // oldest first, so the timeline reads previous -> current -> up next
   if (!playing && previous.length === 0) {
     return (
       <Stat label="RECENTLY PLAYED">
@@ -1340,59 +1162,148 @@ function NowPlaying() {
       </Stat>
     );
   }
-  const meta = !playing && previous[0]?.playedAt ? timeAgo(previous[0].playedAt) : undefined;
+  // the focus block: my live track, or the preview the visitor is playing — same layout.
+  // Around it: dim rows above (history / newer neighbours) and » rows below (queue / older).
+  const preview = !playing && listening ? previous[sel] : undefined;
+  const focus = playing ?? preview?.track ?? null;
+  // preview window: one less track than the flat list shows, so window rows + the progress
+  // row always equal the flat list height — starting/stopping/navigating never shifts layout
+  // (at the list edges the window extends the other way instead of shrinking)
+  const winSize = Math.min(5, Math.max(1, previous.length - 1));
+  const winStart = Math.max(0, Math.min(sel - 2, previous.length - winSize));
+  const beforeRows = playing || !preview ? previous : previous.slice(winStart, sel);
+  const nextTracks = playing
+    ? state.queue.slice(0, 2)
+    : preview
+      ? previous.slice(sel + 1, winStart + winSize).map((e) => e.track)
+      : [];
+  // previews are hard-capped at 30s by Spotify (the CDN file itself); play once, no loop
+  const focusProgress = playing ? shownProgress : preview ? Math.min(30_000, now - listenStart) : null;
+  const focusDuration = playing ? state.durationMs : preview ? 30_000 : null;
+  const flat = !focus; // plain browsable list (idle, nothing sounding)
+  const meta = flat && previous[0]?.playedAt ? timeAgo(previous[0].playedAt) : undefined;
+  // hierarchy: dim indented history above, bright focus block set off by blank lines,
+  // dim indented queue below, controls centered at the bottom. Secondary rows stay
+  // clickable but drop the underline so only the focus track carries visual weight.
   return (
-    <Stat label={playing ? "NOW PLAYING" : "RECENTLY PLAYED"} meta={meta}>
-      {playing ? (
-        <box style={{ flexDirection: "column" }}>
-          <text bg={PANEL}>
-            <span fg={ACCENT}>{"♫ "}</span>
-            {playing.songUrl ? (
-              <a href={playing.songUrl} fg={INK} attributes={TextAttributes.UNDERLINE}>
-                {truncate(playing.name, 34)}
+    <Stat label={playing ? "NOW PLAYING" : preview ? "PREVIEW" : "RECENTLY PLAYED"} meta={meta}>
+      {beforeRows.map((e, i) => {
+        const isSel = flat && Boolean(volume) && i === sel; // browsable selection (web idle only)
+        const rowFg = !flat ? FAINT : isSel || (!volume && i === 0) ? INK : MUTED;
+        return (
+          <text key={i} bg={PANEL}>
+            <span fg={isSel ? MUTED : FAINT}>{!flat ? "  · " : isSel ? "▸ " : "· "}</span>
+            {e.track.songUrl ? (
+              <a href={e.track.songUrl} fg={rowFg} attributes={flat ? TextAttributes.UNDERLINE : undefined}>
+                {truncate(e.track.name, 32)}
               </a>
             ) : (
-              <span fg={INK}>{truncate(playing.name, 34)}</span>
+              <span fg={rowFg}>{truncate(e.track.name, 32)}</span>
             )}
-            <span fg={MUTED}>{playing.artists.length ? `  —  ${truncate(playing.artists.join(", "), 22)}` : ""}</span>
+            <span fg={FAINT}>{e.track.artists.length ? ` — ${truncate(e.track.artists.join(", "), 18)}` : ""}</span>
           </text>
-          {state.progressMs != null && state.durationMs ? (
-            <ProgressBar progress={state.progressMs} duration={state.durationMs} />
+        );
+      })}
+      {focus ? (
+        <box style={{ flexDirection: "column" }}>
+          {/* breathing room only for my live playback; the preview window keeps rows tight
+              (indentation carries the hierarchy) so navigating never shifts the layout */}
+          {playing && beforeRows.length ? <box style={{ height: 1 }} /> : null}
+          <text bg={PANEL}>
+            <span fg={ACCENT}>{"♫ "}</span>
+            {focus.songUrl ? (
+              <a href={focus.songUrl} fg={INK} attributes={TextAttributes.UNDERLINE}>
+                {truncate(focus.name, 34)}
+              </a>
+            ) : (
+              <span fg={INK}>{truncate(focus.name, 34)}</span>
+            )}
+            <span fg={MUTED}>{focus.artists.length ? `  —  ${truncate(focus.artists.join(", "), 22)}` : ""}</span>
+          </text>
+          {focusProgress != null && focusDuration ? (
+            <ProgressBar progress={focusProgress} duration={focusDuration} />
           ) : (
             <Equalizer />
           )}
+          {playing && nextTracks.length ? <box style={{ height: 1 }} /> : null}
         </box>
       ) : null}
-      {previous.map((e, i) => (
-        <text key={i} bg={PANEL}>
-          <span fg={FAINT}>{"· "}</span>
-          {e.track.songUrl ? (
-            <a href={e.track.songUrl} fg={!playing && i === 0 ? INK : MUTED} attributes={TextAttributes.UNDERLINE}>
-              {truncate(e.track.name, 32)}
+      {nextTracks.map((t, i) => (
+        <text key={`q${i}`} bg={PANEL}>
+          <span fg={FAINT}>{"  » "}</span>
+          {t.songUrl ? (
+            <a href={t.songUrl} fg={MUTED}>
+              {truncate(t.name, 32)}
             </a>
           ) : (
-            <span fg={!playing && i === 0 ? INK : MUTED}>{truncate(e.track.name, 32)}</span>
+            <span fg={MUTED}>{truncate(t.name, 32)}</span>
           )}
-          <span fg={MUTED}>{e.track.artists.length ? ` — ${truncate(e.track.artists.join(", "), 18)}` : ""}</span>
+          <span fg={FAINT}>{t.artists.length ? ` — ${truncate(t.artists.join(", "), 18)}` : ""}</span>
         </text>
       ))}
+      {!playing && volume ? (
+        <box style={{ flexDirection: "column" }}>
+          <box style={{ height: 1 }} />
+          {/* « selects up the list, » down (as rendered); space toggles, ←/→ move too.
+              fixed-width box spanning the GITHUB stats row above: « sits on its first
+              column, » exactly on the ★ column — nothing moves across flat/preview modes */}
+          <box style={{ flexDirection: "row", justifyContent: "space-between", width: controlsWidth ?? 33, alignSelf: "flex-start" }}>
+            <box onMouseDown={() => moveSel(-1)}>
+              <text bg={PANEL} fg={MUTED}>{"«"}</text>
+            </box>
+            <box onMouseDown={() => (listening ? stopListen() : startListen(sel))}>
+              <text bg={PANEL} fg={listening ? ACCENT : MUTED}>{listening ? "■" : "▶"}</text>
+            </box>
+            <box onMouseDown={() => moveSel(1)}>
+              <text bg={PANEL} fg={MUTED}>{"»"}</text>
+            </box>
+          </box>
+        </box>
+      ) : null}
     </Stat>
   );
 }
 
-function Home({ visit, narrow }: { visit: VisitInfo; narrow: boolean }) {
+function Home({ visit, narrow, volume }: { visit: VisitInfo; narrow: boolean; volume?: VolumeChannel }) {
+  // github data lives here so the music controls can align to the stats row's ★ column
+  const [gh, setGh] = useState<GitHubPulse | null>(null);
+  useEffect(() => {
+    let alive = true;
+    getGitHub()
+      .then((d) => {
+        if (alive) setGh(d);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  // stretch row: headers align at the top; the left column pins its chart to the row's
+  // bottom edge so the chart baseline meets the bottom of the right block
   return (
-    <box style={{ flexDirection: narrow ? "column" : "row", alignItems: "flex-start", paddingLeft: 2, paddingTop: 1 }}>
-      <box style={{ flexDirection: "column", width: narrow ? undefined : 50 }}>
-        <Stat label="VISITORS">
-          <VisitorHead total={visit.count} />
-          <box style={{ height: 1 }} />
+    <box style={{ flexDirection: narrow ? "column" : "row", alignItems: narrow ? "flex-start" : "stretch", paddingLeft: 2, paddingTop: 1 }}>
+      {/* 43 = 14-day chart (42) + 1; anything wider is dead space before the volume bar */}
+      <box style={{ flexDirection: "column", width: narrow ? undefined : 43 }}>
+        <text bg={PANEL} fg={MUTED}>VISITORS</text>
+        <VisitorHead total={visit.count} />
+        {narrow ? <box style={{ height: 1 }} /> : <box style={{ flexGrow: 1, minHeight: 1 }} />}
+        {/* marginBottom mirrors Stat's, so the chart baseline == the right block's bottom */}
+        <box style={{ flexDirection: "column", marginBottom: 1 }}>
           <VisitorChart data={visit.daily} />
-        </Stat>
+        </box>
       </box>
-      <box style={{ flexDirection: "column", paddingLeft: narrow ? 0 : 4 }}>
-        <GitHubPulse />
-        <NowPlaying />
+      {/* the bar hugs the visitors chart tighter than the plain column gap (4) */}
+      <box style={{ flexDirection: "row", alignItems: "flex-start", paddingLeft: narrow ? 0 : volume ? 1 : 4 }}>
+        {/* vertical volume runs down the left edge, top-aligned with the GITHUB header */}
+        {volume && !narrow ? (
+          <box style={{ flexDirection: "column", paddingRight: 2 }}>
+            <VolumeBar channel={volume} />
+          </box>
+        ) : null}
+        <box style={{ flexDirection: "column" }}>
+          <GitHubPulse g={gh} />
+          <NowPlaying volume={volume} controlsWidth={gh ? ghStatsWidth(gh) : undefined} />
+        </box>
       </box>
     </box>
   );
@@ -1424,7 +1335,7 @@ function ResumePicker({
         width: w,
         zIndex: 10,
         flexDirection: "column",
-        backgroundColor: PANEL,
+        backgroundColor: POND_BG_HEX,
         border: true,
         borderStyle: "rounded",
         borderColor: accent,
@@ -1453,7 +1364,7 @@ function ProjectItem({ title, active, index, onSelect }: { title: string; active
   const label = truncate(title, LIST_W - 4);
   return (
     <box onMouseDown={() => onSelect(index)}>
-      <text bg={active ? SEL_BG : undefined}>
+      <text bg={active ? SEL_BG : PANEL}>
         <span fg={active ? ACCENT : FAINT}>{active ? " ▐▌ " : "    "}</span>
         <span fg={active ? INK : MUTED}>{label.padEnd(LIST_W - 4)}</span>
       </text>
@@ -1468,7 +1379,7 @@ function ProjectLinks({ p }: { p: Project }) {
   // (the About screen covers LinkedIn).
   return (
     <box style={{ flexDirection: "column" }}>
-      <text fg={FAINT}>LINKS</text>
+      <text bg={PANEL} fg={FAINT}>LINKS</text>
       <LinkLine label="GitHub" href={p.githubUrl} text={p.githubUrl} />
       {p.eventUrl && <LinkLine label="Event" href={p.eventUrl} text={p.eventUrl.split("?")[0]} />}
     </box>
@@ -1479,16 +1390,16 @@ function ProjectDetail({ p, detailW }: { p: Project; detailW: number }) {
   const top3 = p.highlight?.toLowerCase().includes("top 3");
   return (
     <box style={{ flexGrow: 1, flexDirection: "column", paddingLeft: 2, paddingRight: 2, paddingTop: 1 }}>
-      {p.highlight && <text fg={ACCENT}>{(top3 ? "★ " : "") + p.highlight.toUpperCase()}</text>}
-      <text>
+      {p.highlight && <text bg={PANEL} fg={ACCENT}>{(top3 ? "★ " : "") + p.highlight.toUpperCase()}</text>}
+      <text bg={PANEL}>
         <strong fg={INK}>{p.title}</strong>
       </text>
       <box style={{ height: 1 }} />
-      <text fg={MUTED}>{p.summary}</text>
+      <text bg={PANEL} fg={MUTED}>{p.summary}</text>
       <box style={{ height: 1 }} />
       <Rule w={detailW} />
       <box style={{ height: 1 }} />
-      <text>
+      <text bg={PANEL}>
         <span fg={FAINT}>STACK   </span>
         {p.tags.map((t, i) => {
           const { tag, col } = techTag(t);
@@ -1507,14 +1418,16 @@ function Projects({ selected, onSelect }: { selected: number; onSelect: (i: numb
   const p = projects[selected];
   const { width, height } = useTerminalDimensions();
   const narrow = width < 64;
-  const bodyRows = Math.max(4, height - 5);
+  // header (pad+title+rule = 3) + footer (rule+nav+pad = 3): anything taller overflows the
+  // screen and yoga flex-shrinks the HEADER by the excess — the title row silently vanishes
+  const bodyRows = Math.max(4, height - 6);
   const detailW = Math.max(20, width - (narrow ? 4 : LIST_W + 6));
 
   // narrow: stack the (tappable) list above the selected project's detail
   if (narrow) {
     return (
       <box style={{ flexDirection: "column", flexGrow: 1, paddingTop: 1 }}>
-        <text fg={FAINT}>{"  PROJECTS"}</text>
+        <text bg={PANEL} fg={FAINT}>{"  PROJECTS"}</text>
         {projects.map((project, i) => (
           <ProjectItem key={project.title} title={project.title} active={i === selected} index={i} onSelect={onSelect} />
         ))}
@@ -1526,7 +1439,7 @@ function Projects({ selected, onSelect }: { selected: number; onSelect: (i: numb
   return (
     <box style={{ flexDirection: "row", flexGrow: 1 }}>
       <box style={{ width: LIST_W, flexDirection: "column", paddingTop: 1 }}>
-        <text fg={FAINT}>{"  PROJECTS"}</text>
+        <text bg={PANEL} fg={FAINT}>{"  PROJECTS"}</text>
         <box style={{ height: 1 }} />
         {projects.map((project, i) => (
           <ProjectItem key={project.title} title={project.title} active={i === selected} index={i} onSelect={onSelect} />
@@ -1669,7 +1582,7 @@ function Chat({
       <Rule />
       <box style={{ flexDirection: "row", paddingLeft: 2, paddingRight: 2 }}>
         {/* trailing-space text also measures 2 wrapped rows (same quirk) — pin it */}
-        <text fg={ACCENT} wrapMode="none" style={{ height: 1 }}>{"> "}</text>
+        <text bg={PANEL} fg={ACCENT} wrapMode="none" style={{ height: 1 }}>{"> "}</text>
         <input
           key={inputKey}
           focused={inputActive}

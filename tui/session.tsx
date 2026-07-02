@@ -15,9 +15,13 @@ export type SessionStreams = {
 };
 
 // Render the app onto an arbitrary transport (ssh channel / ws-backed stream / real tty).
+// `volume` (web sessions only) links the TUI volume bar to the browser tab's ambient audio.
+// `pond: false` (web sessions) skips the server-drawn koi pond — the browser renders it
+// locally on a canvas (web/pond.ts), so ripples react at 0ms and the WS stream stays tiny.
 export async function startSession(
   streams: SessionStreams,
   onExit: () => void,
+  opts?: { volume?: import("./app").VolumeChannel; pond?: boolean },
 ): Promise<CliRenderer> {
   // re-read per session; getLinkedInSnapshot has its own 30s TTL so new visits get fresh data
   const linkedIn = await getLinkedInSnapshot();
@@ -47,7 +51,7 @@ export async function startSession(
     origDestroy();
   };
   createRoot(renderer).render(
-    <App linkedIn={linkedIn} visit={visit} distinctId={distinctId} onExit={onExit} />,
+    <App linkedIn={linkedIn} visit={visit} distinctId={distinctId} onExit={onExit} volume={opts?.volume} pond={opts?.pond} />,
   );
   return renderer;
 }
