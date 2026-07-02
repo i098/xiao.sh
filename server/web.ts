@@ -11,6 +11,7 @@ const HTML = `<!doctype html>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>xiao.sh</title>${SEO_HEAD}
 <link rel="icon" type="image/png" href="/favicon.png" />
+<meta name="theme-color" content="#030c0d" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css" />
 <style>
   html,body{margin:0;height:100%;background:#030c0d;overflow:hidden;}
