@@ -1,12 +1,12 @@
 {
   "profile": {
     "name": "Jerry Xiao",
-    "title": "CS Student + Builder",
-    "summary": "Recent: Built Interpreter, placing 1st at the RETURN OF THE AGENTS hackathon hosted by Afore Capital and AI Valley!",
+    "title": "Jerry Xiao - Stealth",
+    "summary": "Experienced in Stealth, educated at Y Combinator, located in Boston, MA.",
     "imageUrl": "https://media.licdn.com/dms/image/v2/D5603AQFI0mC_ZTgEPg/profile-displayphoto-scale_200_200/B56ZmiW8wMJ0AY-/0/1759365552687?e=2147483647&v=beta&t=XSseD0vZMjv1yJYto8sYPgtVj8Gy9F6AxubA5CrVnY8",
     "location": "Boston, MA",
     "linkedinUrl": "https://www.linkedin.com/in/xiaojerry",
-    "followerCount": 1551,
+    "followerCount": 1558,
     "achievements": [
       "We (Josh Xie, Purav Patel, Janani Prasad, and I) built Interpreter, placing 1st at the RETURN OF THE AGENTS hackathon hosted by Afore Capital and AI Valley!",
       "Thanks to my amazing Northeastern teammates, Alazer Manakelew, Subham K., and Allen Z., we were able to create Web Brain and placed 3rd/75 teams!",
@@ -27,274 +27,62 @@
       "Stripe",
       "Shopify",
       "Gemini",
-      "Claude",
       "Cloudflare R2",
       "Vercel",
-      "CSS",
-      "HTML"
+      "CSS"
     ],
-    "collaborators": [
-      "Josh Xie",
-      "Purav Patel",
-      "Janani Prasad",
-      "Alazer Manakelew",
-      "Subham K.",
-      "Allen Z.",
-      "Aritra S.",
-      "Wei Tu",
-      "Neil Tripathi",
-      "Jiabao Hu"
-    ],
-    "narrative": [
-      "We (Josh Xie, Purav Patel, Janani Prasad, and I) built Interpreter, placing 1st at the RETURN OF THE AGENTS hackathon hosted by Afore Capital and AI Valley!",
-      "I had lots of fun at the MongoDB Agentic Memory and Context Engineering Hackathon located at the ferry building’s SHACK15 today!",
-      "Last night, we (Aritra S., Wei Tu, and I) had lots of fun replacing Santa's Job with AI, placing 1st at Santa's Ho's HackNight by Dedalus Labs at The Residency's Inventor's House in San Francisco for...",
-      "Within 24 hours we (Aritra S., Neil Tripathi, and I) built the Airbnb/Zillow for physical ads at Y Combinator HQ, placing top 6 in the Full Stack Hackathon hosted by Sim and Lovable!",
-      "Had a great time building again @ SHACK15 this weekend with my friends Subham K., Alazer Manakelew & Jiabao Hu!",
-      "Another day, another hackathon @ SHACK15.",
-      "Recent result: We (Josh Xie, Purav Patel, Janani Prasad, and I) built Interpreter, placing 1st at the RETURN OF THE AGENTS hackathon hosted by Afore Capital and AI Valley!",
-      "Frequent stack: JavaScript, Python, Java, Swift, React, Next.js, MongoDB, Supabase."
-    ]
+    "collaborators": [],
+    "narrative": []
   },
   "sections": [
     {
-      "title": "Sign in to view Jerry’s full profile",
+      "title": "Experience",
       "items": [
-        "Report this profile",
-        "Computer Repair",
-        "Technical Support",
-        "🏆 First SF hackathon win! As they say, third time's the charm. Or more precisely, third hackathon in 3 days is the charm. 🥵 We took second… 🏆 First SF hackathon win! As they say, third time's the charm. Or more precisely, third hackathon in 3 days is the charm. 🥵 We took second… Liked by Jerry Xiao",
-        "Cactus x Google DeepMind Hackathon. Cactus x Google DeepMind Hackathon. Liked by Jerry Xiao",
-        "We (Josh Xie, Purav Patel, Janani Prasad, and I) built Interpreter, placing 1st at the RETURN OF THE AGENTS hackathon hosted by Afore Capital and AI… We (Josh Xie, Purav Patel, Janani Prasad, and I) built Interpreter, placing 1st at the RETURN OF THE AGENTS hackathon hosted by Afore Capital and AI… Shared by Jerry Xiao",
-        "Rule Your Own Game, Inc. ******** ********",
-        "******** **********",
-        "************ ********** ******** ** ******* ******* * **** ** *** ************** undefined 2025 - 2028",
-        "******* ** ****** **** ****** *** ************************ ******* *** 2021 - 2025",
-        "Motorcycle Safety Foundation ECourse Motorcycle Safety Foundation Issued Dec 2024 Credential ID 17252336",
-        "MBA Essentials University of Glasgow Adam Smith Business School Issued Sep 2024 Credential ID YMMN5Y6OVHS6 See credential",
-        "Certification of Completion Extern Issued Aug 2024 Credential ID 113433248 See credential",
-        "Certified Entry-Level Python Programmer OpenEDG Issued May 2023 Credential ID zDnB.iHDZ.9Q0d See credential",
-        "Skate Therapy Instructor SkateTherapy Aug 2024 - Apr 2025 9 months Children Assisted in adaptive ice skating instruction for 20+ students with disabilities, leveraging 7 years of hockey experience.",
-        "Student Visionaries The Leukemia & Lymphoma Society Oct 2024 - Apr 2025 7 months Health Team Lymphomaniacs: $18k+ raised. https://events.lls.org/lv/svoylv25/tlymphoman#Teams-Student-Visionaries-of-the-Year-Fundraiser.",
-        "TrueNAS Budget Home Server Aug 2025 TrueNAS home server built on a Dell Precision T3620 with (4x4) 16TB RAID-Z1 storage, i7-7700K, (2x16) 32GB RAM, and Nvidia P4000 GPU. Supports Tailscale remote access, Nginx reverse proxy, and Docker/Portainer for services like file storage, media streaming, and self-hosting. Other creators",
-        "Stock Sentiment Analysis Jul 2025 CLI Python tool that pulls SEC Form 4 insider trades with filters for company, trade size, and time period, plus optional AI summaries via OpenRouter. A separate version for Reddit data is also available.",
-        "Research + Other Stuff Aug 2024 - Apr 2025",
-        "Battle Station Sep 2023 - Sep 2023 https://pcpartpicker.com/list/WnhvqH",
-        "RETURN OF THE AGENTS Hackathon - 1st Overall Afore Capital Feb 2026",
-        "Y Combinator Full Stack Hackathon Top 6 Y Combinator Jan 2026",
-        "1st Place Logistic's Track - Santa's Ho's HackNight by Dedalus Labs Dedalus Labs Dec 2025",
-        "Hack FLUX: Beyond One Hackathon Top 6 Black Forest Labs Nov 2025",
-        "Google Gemini Hackathon Top 6 Ted AI SF Oct 2025"
+        "Stealth"
       ]
     },
     {
-      "title": "Services",
+      "title": "Education",
       "items": [
-        "Computer Repair",
-        "Technical Support"
+        "Report this profile"
       ]
     },
     {
-      "title": "Activity",
+      "title": "Skills",
       "items": [
-        "🏆 First SF hackathon win! As they say, third time's the charm. Or more precisely, third hackathon in 3 days is the charm. 🥵 We took second… 🏆 First SF hackathon win! As they say, third time's the charm. Or more precisely, third hackathon in 3 days is the charm. 🥵 We took second… Liked by Jerry Xiao",
-        "Cactus x Google DeepMind Hackathon. Cactus x Google DeepMind Hackathon. Liked by Jerry Xiao",
-        "We (Josh Xie, Purav Patel, Janani Prasad, and I) built Interpreter, placing 1st at the RETURN OF THE AGENTS hackathon hosted by Afore Capital and AI… We (Josh Xie, Purav Patel, Janani Prasad, and I) built Interpreter, placing 1st at the RETURN OF THE AGENTS hackathon hosted by Afore Capital and AI… Shared by Jerry Xiao"
-      ]
-    },
-    {
-      "title": "Experience & Education",
-      "items": [
-        "Rule Your Own Game, Inc. ******** ********",
-        "******** **********",
-        "************ ********** ******** ** ******* ******* * **** ** *** ************** undefined 2025 - 2028",
-        "******* ** ****** **** ****** *** ************************ ******* *** 2021 - 2025"
-      ]
-    },
-    {
-      "title": "Licenses & Certifications",
-      "items": [
-        "Motorcycle Safety Foundation ECourse Motorcycle Safety Foundation Issued Dec 2024 Credential ID 17252336",
-        "MBA Essentials University of Glasgow Adam Smith Business School Issued Sep 2024 Credential ID YMMN5Y6OVHS6 See credential",
-        "Certification of Completion Extern Issued Aug 2024 Credential ID 113433248 See credential",
-        "Certified Entry-Level Python Programmer OpenEDG Issued May 2023 Credential ID zDnB.iHDZ.9Q0d See credential"
-      ]
-    },
-    {
-      "title": "Volunteer Experience",
-      "items": [
-        "Skate Therapy Instructor SkateTherapy Aug 2024 - Apr 2025 9 months Children Assisted in adaptive ice skating instruction for 20+ students with disabilities, leveraging 7 years of hockey experience.",
-        "Student Visionaries The Leukemia & Lymphoma Society Oct 2024 - Apr 2025 7 months Health Team Lymphomaniacs: $18k+ raised. https://events.lls.org/lv/svoylv25/tlymphoman#Teams-Student-Visionaries-of-the-Year-Fundraiser."
-      ]
-    },
-    {
-      "title": "Projects",
-      "items": [
-        "TrueNAS Budget Home Server Aug 2025 TrueNAS home server built on a Dell Precision T3620 with (4x4) 16TB RAID-Z1 storage, i7-7700K, (2x16) 32GB RAM, and Nvidia P4000 GPU. Supports Tailscale remote access, Nginx reverse proxy, and Docker/Portainer for services like file storage, media streaming, and self-hosting. Other creators",
-        "Stock Sentiment Analysis Jul 2025 CLI Python tool that pulls SEC Form 4 insider trades with filters for company, trade size, and time period, plus optional AI summaries via OpenRouter. A separate version for Reddit data is also available.",
-        "Research + Other Stuff Aug 2024 - Apr 2025",
-        "Battle Station Sep 2023 - Sep 2023 https://pcpartpicker.com/list/WnhvqH"
-      ]
-    },
-    {
-      "title": "Honors & Awards",
-      "items": [
-        "RETURN OF THE AGENTS Hackathon - 1st Overall Afore Capital Feb 2026",
-        "Y Combinator Full Stack Hackathon Top 6 Y Combinator Jan 2026",
-        "1st Place Logistic's Track - Santa's Ho's HackNight by Dedalus Labs Dedalus Labs Dec 2025",
-        "Hack FLUX: Beyond One Hackathon Top 6 Black Forest Labs Nov 2025",
-        "Google Gemini Hackathon Top 6 Ted AI SF Oct 2025",
-        "MongoDB Hackathon 3rd MongoDB Oct 2025",
-        "AP Capstone Diploma Collegeboard Jul 2025",
-        "UH Bauer Think Tank Top 5 Junior Achievement of Southeast Texas Mar 2025 Product Solace and pitch - 4th",
-        "Company Program Trade Fair Best Social Media Junior Achievement of Southeast Texas Feb 2025",
-        "DECA Business Operations Research State Qualifier DECA Jan 2025",
-        "FBISD Academic Excellence Fort Bend County District 2025 2022-2025",
-        "Junior Achievement Ignite the Spark 3rd Place Junior Achievement of Southeast Texas Sep 2024 55-minute prep time for 1-minute elevator pitch, 25 teams, 6 judges, regional competition.",
-        "Red-Black Belt ATA Evolve Martial Arts Sep 2024",
-        "AP Scholar Collageboard Jul 2024",
-        "DECA Entrepreneurial Team Decision Making State Qualifier DECA Jan 2024",
-        "Junior Achievement Outstanding New Company Junior Achievement of Southeast Texas May 2023"
-      ]
-    },
-    {
-      "title": "Languages",
-      "items": [
-        "English Native or bilingual proficiency",
-        "Chinese Native or bilingual proficiency",
-        "Mandrin Native or bilingual proficiency",
-        "Cantonese Native or bilingual proficiency"
-      ]
-    },
-    {
-      "title": "Organizations",
-      "items": [
-        "Oasis Co-Founder / VP / Performer Sep 2024 - May 2025 Breakdancing club that raises money for Leukemia & Lymphoma Society, part of the 2025 Lehigh Valley and Northeast PA Student Visionaries of the Year Team Member.",
-        "Web Development & Design Officer Aug 2022 - May 2025",
-        "ATA Evolve Martial Arts Practitioner May 2021 - May 2025",
-        "Junior Achievement of Southeast Texas Competitor May 2021 - Apr 2025 Horizons: Led Solace’s Fusion 360‑designed solar modular battery‑pack concept, enabling interchangeable modules & app‑driven feature and module management design + other projects.",
-        "TechDev Academy Pitcher Jul 2024 - Jul 2024 Entrepreneurship venture boot camp at Stanford University. Pitched mock start-up in front of 30+ competitors, audience, staff and 5 judges."
-      ]
-    },
-    {
-      "title": "More activity by Jerry",
-      "items": [
-        "My typical day as an AI engineer: 9 AM: Ask Claude to write the code 9:05 AM: Ask Claude to fix the code Claude wrote 9:30 AM: Explain to Claude… My typical day as an AI engineer: 9 AM: Ask Claude to write the code 9:05 AM: Ask Claude to fix the code Claude wrote 9:30 AM: Explain to Claude… Liked by Jerry Xiao"
-      ]
-    },
-    {
-      "title": "View Jerry’s full profile",
-      "items": [
-        "See who you know in common",
-        "Get introduced",
-        "Contact Jerry directly"
-      ]
-    },
-    {
-      "title": "Explore more posts",
-      "items": [
-        "Y Combinator 2M followers Generality, Inc. (YC W25) is launching game-arena.ai: the largest LLM strategy game tournament to date. Games are great for measuring LLMs on instruction following, long-horizon planning, and problem-solving. In fact, models that are Olympiad-level at math and coding often struggle to make accurate moves in Game Arena (median illegal-move rate: 11.4%). Game environments also resist contam...",
-        "Y Combinator 2M followers BaseFrame (YC W26) helps hardware teams find mistakes in their project designs and explore tradeoffs early. Anshul and Vaibhav were roommates at Berkeley and faced these issues themselves when working on robotics startups in the past. Their vision is to help hardware teams bring breakthrough products to market faster, leaner, and with data-driven compromise. To make this work, BaseFrame’s...",
-        "Y Combinator 2M followers Eventual has just raised $20M in Series A funding to power multimodal AI with their open source engine Daft. While working on self-driving cars at Lyft, engineers Sammy Sidhu and Jay Chia ran into the same headache over and over: managing huge volumes of unstructured data — text, images, video, audio — with no unified way to process it. The tools didn’t exist, so they built one. That inte...",
-        "Navya Jammalamadaka Microsoft • 4K followers Breaking into tech as a student or new grad in 2025 isn’t easy with all the chaos in the job market. So for the next 15 days, I’m sharing the exact tips and habits that actually move the needle — no fluff. Day 1️⃣: The formula that just works: 👩‍💻2 Leetcode Mediums 🧠2 Behavioral Questions 📝10 Quality Applications ⏱️10 Minutes polishing your resume Do this daily. It’...",
-        "Jia C Jam • 47K followers Chungin Lee is the co-founder and ceo of cluely, recently raised 5.3 million for the ai startup. previously, he co-founded interview coder, a viral ai tool to cheat on big tech software engineering interviews. It made million rapidly after launch 214 11 Comments",
-        "Olaoluwa Oguneye Dorm Room Fund • 14K followers I'm halfway through my internship at Google and here are three of the biggest lessons I’ve learned from working inside Big Tech: 1. Big Tech’s greatest unfair advantage is having no overhead If you’re a startup trying to compete on features or technical depth alone, you're fighting a losing battle (I've got a crazy story about exactly this that I saw here this summer...",
-        "Evolving AI 123K followers 💻 Anysphere, the company behind the AI coding assistant Cursor, has raised $900 million in a funding round led by Thrive Capital, tripling its valuation to $9 billion. Andreessen Horowitz and Accel also participated in the round. Cursor has gained popularity among developers for its AI-powered code generation capabilities, reportedly producing nearly a billion lines of code daily throug...",
-        "Ryan Peterman The Peterman Pod • 195K followers \"How to get a return offer from FAANG internships\" clip just went viral on my IG (~100k views, 907 shares, 1.7k saves) I've had 5 interns at Meta, here are some tips for what a strong internship performance looks like: 1. Move fast - Your project should be unambigious and not too complex. They're just trying to see if you can unblock yourself and make progress fast. ...",
-        "Alok Thakur Qualcomm • 2K followers 🚨 NVIDIA in talks to acquire AI21 Labs for ~$3B 🚨 This isn’t about chips anymore. It’s about talent and models. AI21 was valued at ~$1.4B last year. Paying nearly 2× signals one thing: 🧠 Brainpower > Compute Why it matters 👇 • Expands Nvidia from hardware into LLMs + enterprise AI • Strengthens Israel as Nvidia’s key R&D hub after Mellanox • Another bold move by Jensen Huang...",
-        "Daniel Derzic At Hartmann Capital, we… • 12K followers ByteDance just announced: UI-TARS-1.5 is now open source! 🔥 Building on their breakthrough GUI automation research, their multimodal AI agent that can control any desktop, browser, or mobile device is now freely available for developers, researchers, and automation enthusiasts to explore, extend, and deploy. Why this matters: - Control any application through...",
-        "Hadley Harris ENIAC Ventures • 20K followers 2 years ago today, A16Z announced they put $100M into Pinecone, as everyone and their mother tripped over each other to invest in vector databases. Given how little standalone vector DBs are valued now, the hype cycle is wild to look back on. Quick timeline below: Late 2022: • ChatGPT launches. • Early RAG architectures emerge. • First buzz around Pinecone, Weaviate, Mi...",
-        "Jason Calacanis All-In Podcast • 698K followers How a College Sophomore Hacked an Amazon Interview We talked with Roy Lee, the student who used AI to hack Amazon’s hiring process, got an offer… then exposed it all on YouTube. Now, he’s facing disciplinary action—but also building a $1M startup from the fallout. • The death of LeetCode? Roy’s tool shows how AI can game coding interviews, forcing companies to rethin...",
-        "Jerry Xiao New York, NY",
-        "Jerry Xiao United States",
-        "Jerry X. Greater Chicago Area",
-        "Jerry Xiao Singapore",
-        "1h 7m Google Gemini for Developers",
-        "35m Large Language Models on AWS: Building and Deploying Open-Source LLMs",
-        "1h 20m Responsible AI with Amazon SageMaker AI"
-      ]
-    },
-    {
-      "title": "Explore top content on LinkedIn",
-      "items": [
-        "Find curated posts and insights for relevant topics all in one place."
-      ]
-    },
-    {
-      "title": "Others named Jerry Xiao",
-      "items": [
-        "Jerry Xiao New York, NY",
-        "Jerry Xiao United States",
-        "Jerry X. Greater Chicago Area",
-        "Jerry Xiao Singapore"
-      ]
-    },
-    {
-      "title": "Add new skills with these courses",
-      "items": [
-        "1h 7m Google Gemini for Developers",
-        "35m Large Language Models on AWS: Building and Deploying Open-Source LLMs",
-        "1h 20m Responsible AI with Amazon SageMaker AI"
+        "HTML",
+        "CSS",
+        "JavaScript",
+        "Python",
+        "Java",
+        "React",
+        "Next.js",
+        "MongoDB",
+        "Supabase",
+        "Stripe",
+        "Shopify"
       ]
     }
   ],
   "posts": [
     {
-      "url": "https://www.linkedin.com/posts/xiaojerry_exploring-the-features-of-a-live-translator-activity-7431220415206744064-0h-U?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEerNM8BaiLwsyO2-11sjJzKRTO2VXWvfD4",
-      "headline": "We (Josh Xie, Purav Patel, Janani Prasad, and I) built Interpreter, placing 1st at the RETURN OF THE AGENTS hackathon hosted by Afore Capital and AI Valley!",
-      "body": "We (Josh Xie, Purav Patel, Janani Prasad, and I) built Interpreter, placing 1st at the RETURN OF THE AGENTS hackathon hosted by Afore Capital and AI Valley! \n\nInterpreter is a browser extension that allows anyone to translate audio live on any of their tabs, including YouTube videos, podcasts, and online meeting tools like Google Meet, Zoom Web, etc. We basically broke the language barrier for the web.\n\nWith just one click, Interpreter locks onto the active tab and starts translating speech live. It then blocks the tab audio, filtering out the original audio and outputting only the translated version. We then stream the chunks via websocket into Speechmatics or MiniMax (STT + Translation -> TTS).\n\nThis is all done by a single worker, so we can scale proportionally to the number of users with highly efficient compute! \n\nFollow this project on Github, we will try to push this into production for fun, it will needs lots of fixing tho since it's scrappy (made < 4 hours).\n\nGithub: https://lnkd.in/gAJcj-h9\n\nVideo Demo: https://lnkd.in/gpykhRR6 \n\nEvent: https://lnkd.in/gRGygk6Q\n\nThank you to Afore Capital and AI Valley for hosting this incredible event, as well as the judges, volunteers, and sponsors (MiniMax, Speechmatics, Vapi, Convex, rtrvr.ai, Plivo, and ArmorIQ) who made it all possible!",
-      "excerpt": "We (Josh Xie, Purav Patel, Janani Prasad, and I) built Interpreter, placing 1st at the RETURN OF THE AGENTS hackathon hosted by Afore Capital and AI Valley! Interpreter is a browser extension that allows anyone to translate audio live on any of their tabs, including YouTube video...",
-      "publishedAt": "2026-02-22T06:16:52.354Z",
-      "imageUrl": "https://media.licdn.com/dms/image/sync/v2/D5627AQHWOKP-a38BBA/articleshare-shrink_1280_800/B56ZyD2.VsKMAQ-/0/1771738754988?e=2147483647&v=beta&t=qFoR5X7ynlvD8QOOhIBEtrWIKHXwZ3US_z-tBiHotUY",
-      "videoUrl": "https://www.loom.com/share/2ce8d0bf13774a27bd1bccddd4daffb2",
-      "commentCount": 19
+      "url": "https://www.linkedin.com/posts/xiaojerry_exploring-the-features-of-a-live-translator-activity-7431220415206744064-0h",
+      "headline": "We built Interpreter, placing 1st at the RETURN OF THE AGENTS hackathon...",
+      "excerpt": "We built Interpreter, placing 1st at the RETURN OF THE AGENTS hackathon hosted by Afore Cap..."
     },
     {
-      "url": "https://www.linkedin.com/posts/xiaojerry_within-24-hours-we-aritra-saharay-neil-activity-7421684534938767361-2Dxc?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEerNM8BaiLwsyO2-11sjJzKRTO2VXWvfD4",
-      "headline": "Within 24 hours we (Aritra S., Neil Tripathi, and I) built the Airbnb/Zillow for physical ads at Y Combinator HQ, placing top 6 in the Full Stack Hackathon hosted by Sim and Lovable!",
-      "body": "Within 24 hours we (Aritra S., Neil Tripathi, and I) built the Airbnb/Zillow for physical ads at Y Combinator HQ, placing top 6 in the Full Stack Hackathon hosted by Sim and Lovable! \n\nWe built a production ready analytics platform and marketplace site called Physical.AI, shipping 3 main features: \n\n- Main AI interface for physical ad space finder / recommendations powered by Fireworks AI, which fetches scraped listings stored in Supabase, you can chat with it back and forth until it finds a physical ad tailored to your budget and needs. It calls the automation flow created in Sim to keep fetching ad listings to be stored in the DB. \n\n- Explore page using Google Maps and Nano Banana, allowing anyone to view physical ad locations, and preview their physical ads with a click of a button. Each location comes with a \"demand score\" that is calculated using an algorithm, which includes data and events from WeatherAPI.com, California PEMS traffic data (40,000+ highway sensors), and other metrics like estimated price (if found) etc. \n\n- A marketplace which allows individual users to list their own available ad space, including name, location, cost, and contract period. \n\nAll payments were handled by Stripe, for both premium subscription and payment for personal ad listings, and we used Lovable for initial UI prototyping.\n\nThis was the first hackathon where I stayed overnight! Huge thanks to Y Combinator for making it a comfortable experience and I’m already looking forward to the next one. A big thank you to Sim and Lovable for hosting, and to Brex, Supabase, and Stripe for sponsoring this event!\n\nRepo: https://lnkd.in/gt5Ba3Ch\n\nQuick Video Showcase:\nhttps://lnkd.in/gQ8PmUzh",
-      "excerpt": "Within 24 hours we (Aritra S., Neil Tripathi, and I) built the Airbnb/Zillow for physical ads at Y Combinator HQ, placing top 6 in the Full Stack Hackathon hosted by Sim and Lovable! We built a production ready analytics platform and marketplace site called Physical.AI, shipping...",
-      "publishedAt": "2026-01-26T22:44:41.337Z",
-      "imageUrl": "https://media.licdn.com/dms/image/v2/D5622AQHf6dVeJHaO3g/feedshare-shrink_800/B56Zv8ewFpJEAk-/0/1769467478862?e=2147483647&v=beta&t=9RYz5qOX6Smg80D3LdLYeKPtkSeGnWjI8FFQLI_9mlo",
-      "commentCount": 11
+      "url": "https://www.linkedin.com/posts/xiaojerry_within-24-hours-we-aritra-saharay-neil-activity-7421684534938767361-2Dxc",
+      "headline": "Within 24 hours we built the Airbnb/Zillow for physical ads at Y Combinator HQ...",
+      "excerpt": "Within 24 hours we built the Airbnb/Zillow for physical ads at Y Combinator HQ, placing top 6 in the Fu...",
+      "publishedAt": "2026-01-26T22:44:41.337Z"
     },
     {
-      "url": "https://www.linkedin.com/posts/xiaojerry_last-night-we-aritra-saharay-wei-tu-and-activity-7406439444557443072-a_O6?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEerNM8BaiLwsyO2-11sjJzKRTO2VXWvfD4",
-      "headline": "Last night, we (Aritra S., Wei Tu, and I) had lots of fun replacing Santa's Job with AI, placing 1st at Santa's Ho's HackNight by Dedalus Labs at The Residency's Inventor's House in San Francisco for the \"Sleigh\" Track (Logistics and Routing for Santa's Sleigh)!",
-      "body": "Last night, we (Aritra S., Wei Tu, and I) had lots of fun replacing Santa's Job with AI, placing 1st at Santa's Ho's HackNight by Dedalus Labs at The Residency's Inventor's House in San Francisco for the \"Sleigh\" Track (Logistics and Routing for Santa's Sleigh)!\n\nWe made ICBG (Intercontinental Ballistic Gifts), a logistics platform for Santa to not need his sleigh anymore... nor his job! Santa can now remotely send - not missiles - but gifts, via a nukemap. \n\nSimply draw an area on our 3D Global Map powered by OpenStreetMap, and address will populate within that area, with a list of quick links on the side that opens the actual location on google maps for super easy, super quick espionage. \n\nEach address would get paired a gift via metadata analysis using grok-4, and you (Santa) can just order gifts in Bulk with just a few clicks. We used AgentMail (YC S25) MCP on Dedalus Labs to send emails alongside our own custom MCP Agent powered by Dedalus Labs to send actual orders. We also implemented a database using Convex so that no address get sent gifts twice, with a downloadable JSON/CSV button so that you can track orders with any software that supports JSON/CSV input. \n\nThanks Palash Awasthi, Manna Patiparnprechavut, and Nicky He for organizing this hackathon, and special thanks to J.P. Morgan & London Founder House for sponsoring this event!\n\nGithub: https://lnkd.in/gmuvRkEq",
-      "excerpt": "Last night, we (Aritra S., Wei Tu, and I) had lots of fun replacing Santa's Job with AI, placing 1st at Santa's Ho's HackNight by Dedalus Labs at The Residency's Inventor's House in San Francisco for the \"Sleigh\" Track (Logistics and Routing for Santa's Sleigh)! We made ICBG (Int...",
-      "publishedAt": "2025-12-15T21:06:08.546Z",
-      "imageUrl": "https://media.licdn.com/dms/image/v2/D5622AQEV-f23FDTmaQ/feedshare-shrink_800/B56Zsj0i0mJoAg-/0/1765832536761?e=2147483647&v=beta&t=Wd7_8JNbvquLcsHecb_ivdFX8_b9UUd49JTQ6rYvebw",
-      "commentCount": 2
-    },
-    {
-      "url": "https://www.linkedin.com/posts/xiaojerry_github-shlawgathonproductkit-an-agentic-activity-7398606880346030080-OeHb?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEerNM8BaiLwsyO2-11sjJzKRTO2VXWvfD4",
-      "headline": "Had a great time building again @ SHACK15 this weekend with my friends Subham K., Alazer Manakelew & Jiabao Hu!",
-      "body": "Had a great time building again @ SHACK15 this weekend with my friends Subham K., Alazer Manakelew & Jiabao Hu! This time, we built ProductKit (productkit.liftgate.io) - placing finalist at the Hack FLUX: Beyond One Hackathon! \n\nProductKit allows anyone to turn anything in any image into a product listing, making it easy for anyone to showcase products online by automatically creating descriptions and consistent HD images, videos, and interactive 3D models, then syncing and displaying them straight to a storefront like Shopify,  and handles storage and deployment across a full modern stack. \n\nFor this project we used Shopify as they provided excellent tooling and documentation with well-supported APIs, but it can be adapted to integrate with any marketplace that provides API access (feel free to fork).\n\nThis project is fully production ready, meaning its ready for anyone to use, Shopify account linking is optional. Site will be up again once we put some limits so we don't immediately get drained of credits by some rando. Edit: its up now, shoot me or Subham a DM for the access code :) Can also just fork and self-host it with own api keys if desired. \n\nWhile I don't have a Shopify store, I personally enjoyed using it to convert pictures of my pets into 3D assets (since they usually turn out kinda funny). \n\nWhat surprised me the most was that you can take front image of a hoodie and a back image of a hoodie, each side with different designs, and the 3D asset generated will accurately display both the front and back designs.\n\nThe tech behind it: Anthropic’s Claude Sonnet 4.5 for vision extraction and auto listing description enhancement, specs extraction from PDF manuals using NVIDIA Nemotron NIM (optional upload), producing high-quality showcase images via passing context from Claude, parsed PDF info if provided, and additional customizations in user settings into FLUX's latest model, creating product videos with Veo2 on fal ai, and building interactive 3D models via omnipart on fal ai rendered in ThreeJS for that AR feel. It then syncs everything to Shopify while running on a stack that includes MongoDB for storage, DigitalOcean for deployment and object hosting, Vercel’s Next.js for the frontend, Kotlin for the backend, and supporting media model APIs through Black Forest Labs (FLUX) and fal ai.\n\nCheck out the Github repo here: https://lnkd.in/gk__jFvC\nSubham's demo: https://lnkd.in/g_aU8Ayj\n\nThanks to Cerebral Valley and Black Forest Labs for hosting, and to sponsors Anthropic, DigitalOcean, fal, Vercel, and NVIDIA for supporting the event!",
-      "excerpt": "Had a great time building again @ SHACK15 this weekend with my friends Subham K., Alazer Manakelew & Jiabao Hu! This time, we built ProductKit (productkit.liftgate.io) - placing finalist at the Hack FLUX: Beyond One Hackathon! ProductKit allows anyone to turn anything in any imag...",
-      "publishedAt": "2025-11-24T06:22:19.711Z",
-      "imageUrl": "https://media.licdn.com/dms/image/sync/v2/D4E27AQE9TRMquKN-xA/articleshare-shrink_1280_800/B4EZq0Hzu4IIAQ-/0/1765168466691?e=2147483647&v=beta&t=HVAEmE4LGPYIGCbzd-KxighzANtQmrNv0PXdIZ5gRn8",
-      "commentCount": 7
-    },
-    {
-      "url": "https://www.linkedin.com/posts/xiaojerry_another-day-another-hackathon-shack15-activity-7385938406486437888-_u5O?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEerNM8BaiLwsyO2-11sjJzKRTO2VXWvfD4",
-      "headline": "Another day, another hackathon @ SHACK15.",
-      "body": "Another day, another hackathon @ SHACK15. This time, for the 2-day Google Gemini Hackathon, where we placed finalist with our project - Sports Clips! Thanks to my teammates Subham K., Sachin Iyer, for working on the middleware + backend, and Jiabao Hu for working with me on the frontend.\n\nIn less than 2 days, we were able to build a production ready clone of tiktok specifically for sports worldwide with AI commentary and caption generation, perfect for any fans who are busy and want to get just the best moments of their favorite sport without watching entire game(s), while also being able to interact with other users via real time comments in live or in highlights!\n\nUsing the YouTube API, we fetched sports videos and lives on demand across the entire YT database, creating scrollable highlights and live games.\n\nUsing Gemini 2.5 flash, we were able to build a automated recursive python pipeline that analyzed games pulled from YT in chunks of 8 seconds continuously, then select and cut out clips that Gemini deems a significant highlight using specific prompt engineering. Then, each clip gets loaded into the highlights tab with collapsible AI captions where users can scroll continuously for the best moments across the globe in their sport of choice.\n\nWe had a separate tab/page for scrollable live videos, where Gemini 2.5 pro was used to automatically commentate on live games where there was no commentator, or build its own commentary on top of live commentary based on what it was seeing, with minimal delay.\n\nBoth pages had real-time comments, likes, shares, and saved interactions (like, comment, view) history (shown on the profile page), with login/signup profile session authentication via MongoDB database. \n\nUsing their VoyageAI for embeddings and vector collection, we were able to implement advanced algorithmic recommendations, mimicing feed personalization similar to tiktok and insta reels. For the clips, we used cloudflare R2 for storage as it was easier to implement than Amazon S3. \n\nUsing swift, we were able to create a beautiful liquid glass interface with haptic feedback, dyanmic animations, sleek media controls, smooth looped video playback, and filtering to only display either all sports randomized or a desired sport.\n\nSpecial thanks to TEDAI San Francisco, Cerebral Valley, PwC, Block, Dataiku, Oracle, Fetchai Foundation, Vectara, MongoDB, Foley & Lardner LLP for sponsoring this event!\n\nLinks - \nRepo: https://lnkd.in/gYSsg4eU\nEvent: https://lnkd.in/gpxHnvNy\n\nWhile the final demo had room for improvement, I had a great time and was able to learn a lot from this experience :)",
-      "excerpt": "Another day, another hackathon @ SHACK15. This time, for the 2-day Google Gemini Hackathon, where we placed finalist with our project - Sports Clips! Thanks to my teammates Subham K., Sachin Iyer, for working on the middleware + backend, and Jiabao Hu for working with me on the f...",
-      "publishedAt": "2025-10-20T07:22:20.176Z",
-      "imageUrl": "https://media.licdn.com/dms/image/v2/D5622AQEdmSkmlceoeg/feedshare-image-high-res/B56ZoAf1C4KIAo-/0/1760944937318?e=2147483647&v=beta&t=j4bwTiDj2QMHGdlqyQDMn90rV4oHoE1o8a_QNqPiM0I",
-      "commentCount": 8
-    },
-    {
-      "url": "https://www.linkedin.com/posts/xiaojerry_i-had-lots-of-fun-at-the-mongodb-agentic-activity-7383038759665164288-yzTn?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEerNM8BaiLwsyO2-11sjJzKRTO2VXWvfD4",
-      "headline": "I had lots of fun at the MongoDB Agentic Memory and Context Engineering Hackathon located at the ferry building’s SHACK15 today!",
-      "body": "I had lots of fun at the MongoDB Agentic Memory and Context Engineering Hackathon located at the ferry building’s SHACK15 today! Special thanks to MongoDB, Meta, Fireworks AI, Modelence, Warp, 1Password, WorkOS, Coinbase, Latent Space Podcast, Amazon Web Services (AWS), Patrick Steyn, and many others, for bringing this event to life! \n\nThanks to my amazing Northeastern teammates, Alazer Manakelew, Subham K., and Allen Z., we were able to create Web Brain and placed 3rd/75 teams!! :)\n\nWeb Brain is a chrome extension that silently memorizes webpages in the background across a long period of time, building a vector database that allows the user to easily ask for that one website or topic they searched a few months ago, but can’t quite remember what it was called. Each time a new tab is loaded that previously hasn’t been saved, the extension will deploy Llama to scrape and feed it into MongoDB.\n\nWe used React, HTML/CSS, for the extension UI/UX, JavaScript for the extension logic, Llama 3.2-1B via local WebGPU, and implemented embeddings for this data using Voyager AI Embeddings API stored in MongoDB. Java/vert.x was used for the backend. \n\nFirework AI’s chat completion API was used to condense data into daily, weekly, monthly, etc. over a time interval, condensing heavy data stored from each site via Llama, into more vague embedding, allowing us to filter out wasteful unneeded context for faster retrieval. We used google auth for session validation and built a local cache for the chat interaction. \n\nLink to repo: https://lnkd.in/gtYanCnH \nIf you are interested in trying this, please reach out! We are keeping the server and services off as the extension is in development mode and not published.\n\nThis experience was a fantastic opportunity to collaborate and innovate, and I look forward to partaking in many more hackathons!",
-      "excerpt": "I had lots of fun at the MongoDB Agentic Memory and Context Engineering Hackathon located at the ferry building’s SHACK15 today! Special thanks to MongoDB, Meta, Fireworks AI, Modelence, Warp, 1Password, WorkOS, Coinbase, Latent Space Podcast, Amazon Web Services (AWS), Patrick S...",
-      "publishedAt": "2025-10-12T07:20:10.503Z",
-      "imageUrl": "https://media.licdn.com/dms/image/v2/D5622AQHYqQWLyYNi5w/feedshare-image-high-res/B56ZnXSniMJkAo-/0/1760253607899?e=2147483647&v=beta&t=srMAXHFPMhTPtP-WutEArF4bX-cT-hrOTfbJPYrM43U",
-      "commentCount": 6
+      "url": "https://www.linkedin.com/posts/xiaojerry_last-night-we-aritra-saharay-wei-tu-and-activity-7406439444557443072-a_O6",
+      "headline": "Last night, we had lots of fun replacing Santa's Job with AI, placing 1st at Santa's Ho's HackNight...",
+      "excerpt": "Last night, we had lots of fun replacing Santa's Job with AI, placing 1st at Santa's Ho's HackNight by Dedalus...",
+      "publishedAt": "2025-12-15T21:06:08.546Z"
     }
   ],
-  "pulledAt": "2026-06-30T13:39:29.449Z",
+  "pulledAt": "2026-07-05T19:42:32.507Z",
   "source": "playwright"
 }
