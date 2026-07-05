@@ -20,5 +20,6 @@
     "types": ["node", "react", "bun"]
   },
   "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules", "tui", "server"]
+  // web/main.ts imports the tui App tree, so it typechecks in the tui program (opentui JSX types)
+  "exclude": ["node_modules", "tui", "server", "web/main.ts"]
 }

@@ -6,6 +6,6 @@
     "types": ["node", "bun"],
     "plugins": []
   },
-  "include": ["tui/**/*.ts", "tui/**/*.tsx", "server/**/*.ts", "src/lib/**/*.ts"],
+  "include": ["tui/**/*.ts", "tui/**/*.tsx", "server/**/*.ts", "src/lib/**/*.ts", "web/main.ts"],
   "exclude": ["node_modules"]
 }
