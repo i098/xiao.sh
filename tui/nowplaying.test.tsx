@@ -1,5 +1,5 @@
 import { expect, test, mock } from "bun:test";
-import { ManualClock } from "@opentui/core/testing";
+import { ManualClock, createMockMouse } from "@opentui/core/testing";
 import { testRender } from "@opentui/react/test-utils";
 import type { SpotifyState, SpotifyTrack } from "@/lib/spotify";
 
@@ -15,6 +15,7 @@ const track = (name: string, artist: string): SpotifyTrack => ({
 // swap this between tests; the mock closes over it
 let state: SpotifyState;
 mock.module("@/lib/spotify", () => ({ getSpotify: async () => state }));
+mock.module("@/lib/preview", () => ({ getPreviewUrl: async () => "https://p.scdn.co/mp3-preview/fake" }));
 const { NowPlaying, VolumeBar } = await import("./music");
 type VolumeChannel = import("./music").VolumeChannel;
 
@@ -118,6 +119,39 @@ test("volume bar renders position and follows channel updates", async () => {
   // every rung waves (level is color-only, invisible in a char frame): 8 glyph rows
   expect(frame.split("\n").filter((l) => /[▎▍▌▋▊▉█▏]/.test(l)).length).toBe(8);
   renderer.destroy();
+});
+
+test("visitor tap on a track row selects it and starts the preview", async () => {
+  state = {
+    configured: true,
+    isPlaying: false,
+    current: null,
+    progressMs: null,
+    durationMs: null,
+    recent: [
+      { track: track("Song 1", "A1"), playedAt: null },
+      { track: track("Song 2", "A2"), playedAt: null },
+      { track: track("Song 3", "A3"), playedAt: null },
+    ],
+    queue: [],
+  };
+  const channel = fakeChannel(0.04);
+  const played: (string | null)[] = [];
+  channel.play = (url) => played.push(url);
+  const clock = new ManualClock();
+  const r = await testRender(<NowPlaying volume={channel} />, { width: 70, height: 12, clock });
+  await new Promise((res) => setTimeout(res, 20));
+  await r.renderOnce();
+  const row = r.captureCharFrame().split("\n").findIndex((l) => l.includes("Song 3"));
+  expect(row).toBeGreaterThanOrEqual(0);
+  await createMockMouse(r.renderer).click(10, row);
+  await new Promise((res) => setTimeout(res, 20)); // async getPreviewUrl -> play
+  await r.renderOnce();
+  expect(played).toEqual(["https://p.scdn.co/mp3-preview/fake"]);
+  const frame = r.captureCharFrame();
+  expect(frame).toContain("PREVIEW");
+  expect(frame).toContain("♫ Song 3");
+  r.renderer.destroy();
 });
 
 test("idle: recently played list, no queue rows", async () => {
