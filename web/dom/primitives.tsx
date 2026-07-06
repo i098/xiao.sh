@@ -119,7 +119,7 @@ function Text({ style, fg, bg, wrapMode, attributes, children }: TextProps) {
   if (fg) css.color = fg;
   if (bg && bg !== "transparent") css.background = bg;
   if (attributes && attributes & 8) css.textDecoration = "underline";
-  return <div style={css}>{children}</div>;
+  return <div style={css}>{stretchBlocks(children)}</div>;
 }
 
 // an inline span's background only covers the font box (~16px of a 19px line), leaving
@@ -133,20 +133,29 @@ function cellBg(css: CSSProperties, bg?: string) {
   css.verticalAlign = "top";
 }
 
-// block-element glyphs (▁█▌…) ink only the font box, so stacked runs (volume bar rungs)
-// show seams; stretch them to the full cell height like a terminal draws them
-const BLOCKY = /^[▀-▟]+$/;
+// block-element glyphs (▁█▌…) ink only the font box, so stacked rows (volume bar rungs)
+// show seams; stretch each block-run to the full cell height like a terminal draws them.
+// Runs inside mixed strings (" ▊█ ") are wrapped individually — spaces stay untouched.
+const BLOCK_RUN = /[▀-▟]+/;
+function stretchBlocks(children: TextProps["children"]): TextProps["children"] {
+  if (typeof children !== "string" || !BLOCK_RUN.test(children)) return children;
+  return children.split(/([▀-▟]+)/).map((p, i) =>
+    BLOCK_RUN.test(p) ? (
+      <span key={i} style={{ display: "inline-block", transform: "scaleY(var(--bs,1.2))" }}>
+        {p}
+      </span>
+    ) : (
+      p
+    ),
+  );
+}
 
 function Span({ fg, bg, attributes, children }: TextProps) {
   const css: CSSProperties = {};
   if (fg) css.color = fg;
   cellBg(css, bg);
-  if (typeof children === "string" && BLOCKY.test(children)) {
-    css.display = "inline-block";
-    css.transform = "scaleY(var(--bs,1.2))";
-  }
   if (attributes && attributes & 8) css.textDecoration = "underline";
-  return <span style={css}>{children}</span>;
+  return <span style={css}>{stretchBlocks(children)}</span>;
 }
 
 function Strong({ fg, bg, children }: TextProps) {
