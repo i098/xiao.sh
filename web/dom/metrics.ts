@@ -13,6 +13,8 @@ let rows = 24;
 let rootEl: HTMLElement | null = null;
 const subs = new Set<() => void>();
 
+let blockStretch = 1.2; // scaleY that makes a █ glyph fill the whole 19px cell
+
 function measure(): void {
   const s = document.createElement("span");
   s.textContent = "0".repeat(100);
@@ -21,6 +23,15 @@ function measure(): void {
   const w = s.getBoundingClientRect().width / 100;
   s.remove();
   if (w > 0) cw = w;
+  // block glyphs ink only the font box (~16px of the 19px line), leaving seams when
+  // stacked (volume bar rungs). Measure the real ink height so spans can stretch to fill.
+  const ctx = document.createElement("canvas").getContext("2d");
+  if (ctx) {
+    ctx.font = FONT;
+    const m = ctx.measureText("█");
+    const ink = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
+    if (ink > 0) blockStretch = LINE_H / ink;
+  }
 }
 
 function update(): void {
@@ -30,6 +41,7 @@ function update(): void {
   const next = { cols: Math.max(20, Math.floor(vw / cw)), rows: Math.max(10, Math.floor(vh / LINE_H)) };
   rootEl?.style.setProperty("--cw", `${cw}px`);
   rootEl?.style.setProperty("--lh", `${LINE_H}px`);
+  rootEl?.style.setProperty("--bs", blockStretch.toFixed(4));
   const changed = next.cols !== cols || next.rows !== rows;
   cols = next.cols;
   rows = next.rows;

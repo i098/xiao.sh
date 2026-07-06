@@ -122,10 +122,29 @@ function Text({ style, fg, bg, wrapMode, attributes, children }: TextProps) {
   return <div style={css}>{children}</div>;
 }
 
+// an inline span's background only covers the font box (~16px of a 19px line), leaving
+// seams between stacked bg cells (visitor chart bars). A TUI paints the WHOLE cell, so
+// bg'd spans become line-height-tall blocks.
+function cellBg(css: CSSProperties, bg?: string) {
+  if (!bg || bg === "transparent") return;
+  css.background = bg;
+  css.display = "inline-block";
+  css.height = "var(--lh)";
+  css.verticalAlign = "top";
+}
+
+// block-element glyphs (▁█▌…) ink only the font box, so stacked runs (volume bar rungs)
+// show seams; stretch them to the full cell height like a terminal draws them
+const BLOCKY = /^[▀-▟]+$/;
+
 function Span({ fg, bg, attributes, children }: TextProps) {
   const css: CSSProperties = {};
   if (fg) css.color = fg;
-  if (bg && bg !== "transparent") css.background = bg;
+  cellBg(css, bg);
+  if (typeof children === "string" && BLOCKY.test(children)) {
+    css.display = "inline-block";
+    css.transform = "scaleY(var(--bs,1.2))";
+  }
   if (attributes && attributes & 8) css.textDecoration = "underline";
   return <span style={css}>{children}</span>;
 }
@@ -133,7 +152,7 @@ function Span({ fg, bg, attributes, children }: TextProps) {
 function Strong({ fg, bg, children }: TextProps) {
   const css: CSSProperties = { fontWeight: 600 };
   if (fg) css.color = fg;
-  if (bg && bg !== "transparent") css.background = bg;
+  cellBg(css, bg);
   return <span style={css}>{children}</span>;
 }
 
@@ -175,17 +194,23 @@ function Input({ style, focused, placeholder, value, onInput, onSubmit }: InputP
     caretColor: "#43f08a",
     height: "var(--lh)",
   });
+  // the placeholder is REAL text in the grid (a native ::placeholder is styled shadow
+  // content — wrong medium): the pond masks it per glyph and water flows through its gaps
   return (
-    <input
-      ref={ref}
-      style={css}
-      placeholder={placeholder}
-      value={value ?? ""}
-      onChange={(e) => onInput?.(e.target.value)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") onSubmit?.((e.target as HTMLInputElement).value);
-      }}
-    />
+    <span style={{ position: "relative", display: "flex", flexGrow: 1, minWidth: 0 }}>
+      <input
+        ref={ref}
+        style={{ ...css, flexGrow: 1 }}
+        value={value ?? ""}
+        onChange={(e) => onInput?.(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") onSubmit?.((e.target as HTMLInputElement).value);
+        }}
+      />
+      {!value && placeholder ? (
+        <span style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none", whiteSpace: "pre", color: "#2c3531" }}>{placeholder}</span>
+      ) : null}
+    </span>
   );
 }
 

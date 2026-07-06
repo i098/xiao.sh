@@ -14,7 +14,7 @@ async function boot(): Promise<void> {
   const rootEl = document.getElementById("root");
   if (!appEl || !rootEl) return;
   initMetrics(rootEl);
-  startPond(appEl); // koi visible immediately, behind the boot screen's transparent rows
+  startPond(appEl); // koi visible immediately, on the same text grid, behind the boot screen's rows
   const distinctId = crypto.randomUUID();
   try {
     const r = await fetch("/api/boot", {
@@ -32,7 +32,7 @@ async function boot(): Promise<void> {
         // ponytail: no connection to close on the web — `q` lands on the goodbye screen; reload restarts
         onExit: () => {},
         volume: createVolumeChannel(),
-        pond: false, // the canvas pond above replaces the cell-buffer KoiPond
+        pond: false, // the DOM text-grid pond above replaces the cell-buffer KoiPond
       }),
     );
   } catch {

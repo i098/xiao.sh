@@ -12,6 +12,9 @@ export type KeyLike = {
   option: boolean;
   sequence: string;
   raw: string;
+  // web-only: whether a text input holds focus. The TUI's KeyEvent lacks this (its chat
+  // input can never blur), so shared code reads it as `?? true`.
+  inputFocused?: boolean;
 };
 
 const NAME: Record<string, string> = {
@@ -46,6 +49,7 @@ function ensureListener(): void {
       option: false,
       sequence: e.key.length === 1 ? e.key : "",
       raw: e.key,
+      inputFocused: document.activeElement?.tagName === "INPUT",
     };
     // NOTE: events from the chat <input> are deliberately not filtered out — the TUI's
     // first-letter-nav timer relies on the global handler seeing letters while the input
