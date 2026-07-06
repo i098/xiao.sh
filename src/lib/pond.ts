@@ -109,6 +109,8 @@ type KoiState = {
   variety: KoiVariety;
   spine: { x: number; y: number }[];
   ribbon: { x: number; y: number }[]; // tail streamer follow-chain, anchored at the fin tip
+  rest: number; // ms of loitering left (0 = swimming): real koi hover in place sometimes
+  nextRest: number; // ms until the next rest — staggered so the koi don't sync up
 };
 
 // Wave-propagation hot loop. Plain JS: the JIT vectorises this tight typed-array loop.
@@ -220,12 +222,12 @@ export class PondSim {
       };
     }
     if (this.koi.length === 0) {
-      const defs: Omit<KoiState, "s" | "spine" | "ribbon">[] = [
+      const defs: Omit<KoiState, "s" | "spine" | "ribbon" | "rest" | "nextRest">[] = [
         { spd: 0.018, size: 1.0, cx: PW * 0.42, cy: PH * 0.5, ax: PW * 0.3, ay: PH * 0.26, ph: 0, variety: KOI_VARIETIES[0] },
         { spd: 0.023, size: 0.8, cx: PW * 0.6, cy: PH * 0.42, ax: PW * 0.24, ay: PH * 0.22, ph: 2.1, variety: KOI_VARIETIES[1] },
       ];
       this.koi = defs.map((d) => {
-        const k: KoiState = { ...d, size: d.size * scale, s: d.ph, spine: [], ribbon: [] };
+        const k: KoiState = { ...d, size: d.size * scale, s: d.ph, spine: [], ribbon: [], rest: 0, nextRest: 6000 + Math.random() * 14000 };
         // start just off a random edge, body trailing further off-screen → swims in
         const edge = Math.floor(Math.random() * 4);
         let hx = 0;
@@ -261,10 +263,23 @@ export class PondSim {
     // `n` rescales the increments — 60fps doesn't double swim speed. The 100ms clamp
     // also makes background-tab rAF resumes graceful (no wave explosion).
     const n = Math.min(deltaMs, 100) / 33;
+    const dtMs = Math.min(deltaMs, 100);
     const ease = 1 - Math.pow(0.84, n); // 0.16 per 33ms tick
     const m = this.mouse;
     for (const k of this.koi) {
-      k.s += k.spd * n;
+      // rest state: real koi loiter. The lead point all but stops (s creeps at 15%, so
+      // fins/tail keep a slow sway and the body drifts), then wandering resumes.
+      if (k.rest > 0) {
+        k.rest -= dtMs;
+        k.s += k.spd * n * 0.15;
+      } else {
+        k.nextRest -= dtMs;
+        if (k.nextRest <= 0) {
+          k.rest = 2500 + Math.random() * 4000;
+          k.nextRest = 9000 + Math.random() * 16000;
+        }
+        k.s += k.spd * n;
+      }
       const target = leadFor(k, k.s);
       const head = k.spine[0];
       if (m) {
@@ -272,6 +287,7 @@ export class PondSim {
         const dy = head.y - m.y * 2;
         const d = Math.hypot(dx, dy);
         if (d < 24 && d > 0.001) {
+          k.rest = 0; // startled — dart, don't loiter
           const f = (24 - d) * 0.5;
           target.x += (dx / d) * f;
           target.y += (dy / d) * f;
@@ -299,11 +315,12 @@ export class PondSim {
           target.y += ((head.y - by) / sd) * f;
         }
       }
-      // ease toward target but cap speed → natural constant-glide swim-in from edges
+      // ease toward target but cap speed → natural constant-glide swim-in from edges;
+      // resting koi only drift (a startle above already cleared rest, so darts stay fast)
       const ex = (target.x - head.x) * ease;
       const ey = (target.y - head.y) * ease;
       const es = Math.hypot(ex, ey) || 1;
-      const maxStep = 1.1 * n;
+      const maxStep = (k.rest > 0 ? 0.3 : 1.1) * n;
       const stepScale = es > maxStep ? maxStep / es : 1;
       head.x += ex * stepScale;
       head.y += ey * stepScale;
