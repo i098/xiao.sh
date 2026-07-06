@@ -31,7 +31,7 @@ import {
   SPLASH_CAP,
 } from "@/lib/pond";
 import { ACCENT, BARS, ERR, FAINT, INK, MUTED, PANEL, SEL_BG, SEP, Stat, commas, compactNum, timeAgo, truncate } from "./ui";
-import { NowPlaying, VolumeBar, rungOf, volAtRung, type VolumeChannel } from "./music";
+import { NowPlaying, VolumeBar, type VolumeChannel } from "./music";
 
 const LIST_W = 30;
 
@@ -437,7 +437,9 @@ export default function App({
       if (key.name === "escape") return setPicker(null);
       return;
     }
-    if (chatActive) {
+    // web only: chat input can be blurred by clicking away — keys then act as plain
+    // hotkeys (instant nav), not typing. The TUI never blurs, so inputFocused is absent.
+    if (chatActive && ((key as { inputFocused?: boolean }).inputFocused ?? true)) {
       if (key.name === "escape") {
         if (navTimer.current) clearTimeout(navTimer.current);
         navTimer.current = null;
@@ -472,14 +474,10 @@ export default function App({
       return;
     }
     if (key.name === "q") return quit();
-    // home: ↑/↓ nudge the tab volume one rung, matching the bar's steps
-    if (screen === "home" && volume && (key.name === "up" || key.name === "down")) {
-      volume.set(volAtRung(rungOf(volume.get()) + (key.name === "up" ? 1 : -1)), "tui");
-      return;
-    }
+    // home ↑/↓ belong to the volume bar, which handles them itself (every surface)
     // ←/→ cycle screens — except where the arrows already mean something: chat keeps them
-    // for the input caret (handled above), home's music browser owns them on web sessions
-    if (!(screen === "home" && volume) && (key.name === "left" || key.name === "right")) {
+    // for the input caret (handled above), home's music browser owns them on every surface
+    if (screen !== "home" && (key.name === "left" || key.name === "right")) {
       const i = SCREENS.indexOf(screen);
       go(SCREENS[(i + (key.name === "right" ? 1 : -1) + SCREENS.length) % SCREENS.length]);
       return;
@@ -545,7 +543,7 @@ export default function App({
             />
           )}
         </box>
-        <Footer screen={screen} chatActive={chatActive} narrow={narrow} music={Boolean(volume)} onNav={go} />
+        <Footer screen={screen} chatActive={chatActive} narrow={narrow} onNav={go} />
       </box>
       {picker && (
         <ResumePicker items={picker.items} index={picker.index} mode={picker.mode} width={termW} height={termH} />
@@ -605,20 +603,18 @@ function Footer({
   screen,
   chatActive,
   narrow,
-  music,
   onNav,
 }: {
   screen: Screen;
   chatActive: boolean;
   narrow: boolean;
-  music: boolean; // home has the interactive music browser (web sessions) — arrows belong to it there
   onNav: (s: Screen) => void;
 }) {
   const hint = chatActive
     ? "Enter send · Esc back"
     : screen === "projects"
       ? "↑↓ / j k move · ← → nav · q quit"
-      : screen === "home" && music
+      : screen === "home"
         ? "← → tracks · ↑↓ vol · q quit"
         : "← → nav · q quit";
   return (
@@ -758,8 +754,11 @@ function VisitorHead({ total }: { total: number }) {
 
 // the GITHUB stats row as plain text — its width anchors the music controls' alignment
 // (the » lands on the ★ column)
+// wide separator: the stats row spans the whole music-widget box (its width feeds
+// controlsWidth), so « ▶ » and the ★ column frame the track list underneath
+const GH_SEP = "    ·    ";
 function ghStatsWidth(g: GitHubPulse): number {
-  return `${compactNum(g.commits)} commits${SEP}${compactNum(g.contributions)} contributions${SEP}${compactNum(g.stars)}★`.length;
+  return `${compactNum(g.commits)} commits${GH_SEP}${compactNum(g.contributions)} contributions${GH_SEP}${compactNum(g.stars)}★`.length;
 }
 
 // GitHub pulse: followers · repos · stars + last push
@@ -770,10 +769,10 @@ function GitHubPulse({ g }: { g: GitHubPulse | null }) {
         <text bg={PANEL}>
           <span fg={INK}>{compactNum(g.commits)}</span>
           <span fg={MUTED}>{" commits"}</span>
-          <span fg={FAINT}>{SEP}</span>
+          <span fg={FAINT}>{GH_SEP}</span>
           <span fg={INK}>{compactNum(g.contributions)}</span>
           <span fg={MUTED}>{" contributions"}</span>
-          <span fg={FAINT}>{SEP}</span>
+          <span fg={FAINT}>{GH_SEP}</span>
           <span fg={ACCENT}>{`${compactNum(g.stars)}★`}</span>
         </text>
       ) : (
@@ -872,9 +871,10 @@ function Home({ visit, narrow, volume }: { visit: VisitInfo; narrow: boolean; vo
         </box>
       </box>
       {/* the bar hugs the visitors chart tighter than the plain column gap (4) */}
-      <box style={{ flexDirection: "row", alignItems: "flex-start", paddingLeft: narrow ? 0 : volume ? 1 : 4 }}>
-        {/* vertical volume runs down the left edge, top-aligned with the GITHUB header */}
-        {volume && !narrow ? (
+      <box style={{ flexDirection: "row", alignItems: "flex-start", paddingLeft: narrow ? 0 : 1 }}>
+        {/* vertical volume runs down the left edge, top-aligned with the GITHUB header;
+            ssh gets it too — adjustable, labelled X since no audio can reach the client */}
+        {!narrow ? (
           <box style={{ flexDirection: "column", paddingRight: 2 }}>
             <VolumeBar channel={volume} />
           </box>

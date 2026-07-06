@@ -72,8 +72,11 @@ export function volAtRung(rung: number): number {
   return (Math.max(0, Math.min(VOL_RUNGS, rung)) / VOL_RUNGS) ** 2;
 }
 
-export function VolumeBar({ channel }: { channel: VolumeChannel }) {
-  const [vol, setVol] = useState(channel.get());
+export function VolumeBar({ channel }: { channel?: VolumeChannel }) {
+  // ssh sessions have no tab audio, so no channel: the bar still renders and adjusts a
+  // local level (the control stays alive), but nothing can sound — the label shows X.
+  const localVol = useRef(0.35);
+  const [vol, setVol] = useState(channel ? channel.get() : localVol.current);
   const [t, setT] = useState(0);
   // live analyser bands from the tab while a preview plays; stale data (>500ms) means the
   // music stopped, so the sine animation takes back over
@@ -81,8 +84,16 @@ export function VolumeBar({ channel }: { channel: VolumeChannel }) {
   // where the drag started: the rung grabbed and the screen row it was at.
   // dragging N rows up from there = N rungs louder — no layout math needed.
   const drag = useRef<{ rung: number; y: number } | null>(null);
-  useEffect(() => channel.subscribe(setVol), [channel]);
-  useEffect(() => channel.onAmp((v) => setAmp({ v, at: Date.now() })), [channel]);
+  useEffect(() => channel?.subscribe(setVol), [channel]);
+  useEffect(() => channel?.onAmp((v) => setAmp({ v, at: Date.now() })), [channel]);
+  const get = () => (channel ? channel.get() : localVol.current);
+  const set = (v: number) => {
+    if (channel) channel.set(v, "tui");
+    else {
+      localVol.current = Math.max(0, Math.min(1, v));
+      setVol(localVol.current);
+    }
+  };
   useEffect(() => {
     const id = setInterval(() => setT((n) => n + 1), 90);
     return () => clearInterval(id);
@@ -94,9 +105,15 @@ export function VolumeBar({ channel }: { channel: VolumeChannel }) {
   const onDrag = (e: { y: number }) => {
     const d = drag.current;
     if (!d) return;
-    channel.set(volAtRung(d.rung + (d.y - e.y)), "tui");
+    set(volAtRung(d.rung + (d.y - e.y)));
   };
-  const nudge = (dir: 1 | -1) => channel.set(volAtRung(rungOf(channel.get()) + dir), "tui");
+  const nudge = (dir: 1 | -1) => set(volAtRung(rungOf(get()) + dir));
+  // ↑/↓ nudge one rung. The bar only mounts on home, so this never leaks to other screens;
+  // it owns the keys on every surface (the app root no longer handles them).
+  useKeyboard((key) => {
+    if (key.name === "up") nudge(1);
+    else if (key.name === "down") nudge(-1);
+  });
   // every row is exactly 5 cells with manual centering: the bar is 3 cells (odd), so the
   // single-glyph ♪/▲/▼ and a 3-char "NN%" sit dead-center over it — no half-cell drift
   const pad5 = (s: string) => {
@@ -111,7 +128,7 @@ export function VolumeBar({ channel }: { channel: VolumeChannel }) {
         else if (e.scroll?.direction === "down") nudge(-1);
       }}
     >
-      <box onMouseDown={(e: { y: number }) => { drag.current = { rung: 0, y: e.y }; channel.set(0, "tui"); }} onMouseDrag={onDrag}>
+      <box onMouseDown={(e: { y: number }) => { drag.current = { rung: 0, y: e.y }; set(0); }} onMouseDrag={onDrag}>
         <text bg={PANEL} fg={FAINT}>{pad5("♪")}</text>
       </box>
       <box onMouseDown={() => nudge(1)}>
@@ -138,7 +155,7 @@ export function VolumeBar({ channel }: { channel: VolumeChannel }) {
         return (
           <box
             key={i}
-            onMouseDown={(e: { y: number }) => { drag.current = { rung, y: e.y }; channel.set(volAtRung(rung), "tui"); }}
+            onMouseDown={(e: { y: number }) => { drag.current = { rung, y: e.y }; set(volAtRung(rung)); }}
             onMouseDrag={onDrag}
           >
             <text bg={PANEL} fg={on ? ACCENT : FAINT}>{` ${cells} `}</text>
@@ -148,8 +165,9 @@ export function VolumeBar({ channel }: { channel: VolumeChannel }) {
       <box onMouseDown={() => nudge(-1)}>
         <text bg={PANEL} fg={MUTED}>{pad5("▼")}</text>
       </box>
-      {/* fixed 5-wide label: 0% -> 100% never resizes or re-centers anything */}
-      <text bg={PANEL} fg={FAINT}>{pad5(`${Math.round(sqrtVol * 100)}%`)}</text>
+      {/* fixed 5-wide label: 0% -> 100% never resizes or re-centers anything.
+          no channel = no audio can reach an ssh client: X marks the mute, bar stays live */}
+      <text bg={PANEL} fg={FAINT}>{pad5(channel ? `${Math.round(sqrtVol * 100)}%` : "X")}</text>
     </box>
   );
 }
@@ -242,9 +260,11 @@ export function NowPlaying({ volume, controlsWidth }: { volume?: VolumeChannel; 
     if (listening) startListen(n);
   };
   useKeyboard((key) => {
-    if (!volume || isPlaying || idleList.length === 0) return;
+    if (isPlaying || idleList.length === 0) return;
+    // browsing works on every surface; playback needs the tab's audio (volume channel)
     if (key.name === "left") return moveSel(-1);
     if (key.name === "right") return moveSel(1);
+    if (!volume) return;
     if (key.name === "space" || key.sequence === " ") {
       if (listening) stopListen();
       else startListen(sel);
@@ -306,29 +326,40 @@ export function NowPlaying({ volume, controlsWidth }: { volume?: VolumeChannel; 
   const focusDuration = playing ? state.durationMs : preview ? previewMs : null;
   const flat = !focus; // plain browsable list (idle, nothing sounding)
   const meta = flat && previous[0]?.playedAt ? timeAgo(previous[0].playedAt) : undefined;
+  // the widget is a box: GITHUB stats row on top, « » controls at the bottom, both W wide.
+  // Every track row must fit inside it — title keeps its cap, artist gets the remainder.
+  const W = controlsWidth ?? 33;
+  const fitRow = (prefixLen: number, name: string, artists: string[], sep = " — ", nameCap = 32) => {
+    const nameFit = truncate(name, Math.min(nameCap, Math.max(8, W - prefixLen - 4)));
+    const budget = W - prefixLen - nameFit.length;
+    const artistTxt = artists.length && budget >= 4 ? truncate(`${sep}${artists.join(", ")}`, budget) : "";
+    return { nameFit, artistTxt };
+  };
   // hierarchy: dim indented history above, bright focus block set off by blank lines,
   // dim indented queue below, controls centered at the bottom. Secondary rows stay
   // clickable but drop the underline so only the focus track carries visual weight.
   return (
     <Stat label={playing ? "NOW PLAYING" : preview ? "PREVIEW" : "RECENTLY PLAYED"} meta={meta}>
       {beforeRows.map((e, i) => {
-        const isSel = flat && Boolean(volume) && i === sel; // browsable selection (web idle only)
-        const rowFg = !flat ? FAINT : isSel || (!volume && i === 0) ? INK : MUTED;
+        const isSel = flat && i === sel; // browsable selection (idle, every surface)
+        const rowFg = !flat ? FAINT : isSel ? INK : MUTED;
         // visitor mode (idle + volume): the whole row is the tap target — it selects and plays
         // the preview (1-char « ▶ » are untappable on a phone). The Spotify link moves to the
         // focus row; my-live-playback rows keep their links.
         const tappable = Boolean(volume) && !playing;
+        const prefix = !flat ? "  · " : isSel ? "▸ " : "· ";
+        const fit = fitRow(prefix.length, e.track.name, e.track.artists);
         const row = (
           <text key={tappable ? undefined : i} bg={PANEL}>
-            <span fg={isSel ? MUTED : FAINT}>{!flat ? "  · " : isSel ? "▸ " : "· "}</span>
+            <span fg={isSel ? MUTED : FAINT}>{prefix}</span>
             {e.track.songUrl && !tappable ? (
               <a href={e.track.songUrl} fg={rowFg} attributes={flat ? TextAttributes.UNDERLINE : undefined}>
-                {truncate(e.track.name, 32)}
+                {fit.nameFit}
               </a>
             ) : (
-              <span fg={rowFg} attributes={flat && tappable ? TextAttributes.UNDERLINE : undefined}>{truncate(e.track.name, 32)}</span>
+              <span fg={rowFg} attributes={flat && tappable ? TextAttributes.UNDERLINE : undefined}>{fit.nameFit}</span>
             )}
-            <span fg={FAINT}>{e.track.artists.length ? ` — ${truncate(e.track.artists.join(", "), 18)}` : ""}</span>
+            <span fg={FAINT}>{fit.artistTxt}</span>
           </text>
         );
         // preview-window rows are previous.slice(winStart, sel): absolute index = winStart + i
@@ -347,12 +378,12 @@ export function NowPlaying({ volume, controlsWidth }: { volume?: VolumeChannel; 
             <span fg={ACCENT}>{"♫ "}</span>
             {focus.songUrl ? (
               <a href={focus.songUrl} fg={INK} attributes={TextAttributes.UNDERLINE}>
-                {truncate(focus.name, 34)}
+                {fitRow(2, focus.name, focus.artists, "  —  ", 34).nameFit}
               </a>
             ) : (
-              <span fg={INK}>{truncate(focus.name, 34)}</span>
+              <span fg={INK}>{fitRow(2, focus.name, focus.artists, "  —  ", 34).nameFit}</span>
             )}
-            <span fg={MUTED}>{focus.artists.length ? `  —  ${truncate(focus.artists.join(", "), 22)}` : ""}</span>
+            <span fg={MUTED}>{fitRow(2, focus.name, focus.artists, "  —  ", 34).artistTxt}</span>
           </text>
           {focusProgress != null && focusDuration ? (
             <ProgressBar progress={focusProgress} duration={focusDuration} />
@@ -363,35 +394,39 @@ export function NowPlaying({ volume, controlsWidth }: { volume?: VolumeChannel; 
         </box>
       ) : null}
       {nextTracks.map((t, i) => {
+        const fit = fitRow(4, t.name, t.artists);
         const row = (
           <text key={playing ? `q${i}` : undefined} bg={PANEL}>
             <span fg={FAINT}>{"  » "}</span>
             {t.songUrl && playing ? (
               <a href={t.songUrl} fg={MUTED}>
-                {truncate(t.name, 32)}
+                {fit.nameFit}
               </a>
             ) : (
-              <span fg={MUTED}>{truncate(t.name, 32)}</span>
+              <span fg={MUTED}>{fit.nameFit}</span>
             )}
-            <span fg={FAINT}>{t.artists.length ? ` — ${truncate(t.artists.join(", "), 18)}` : ""}</span>
+            <span fg={FAINT}>{fit.artistTxt}</span>
           </text>
         );
         // preview-window rows below the focus are previous.slice(sel+1, ...): absolute sel+1+i
         return playing ? row : <box key={`q${i}`} onMouseDown={() => startListen(sel + 1 + i)}>{row}</box>;
       })}
-      {!playing && volume ? (
+      {!playing && idleList.length > 0 ? (
         <box style={{ flexDirection: "column" }}>
           <box style={{ height: 1 }} />
-          {/* « selects up the list, » down (as rendered); space toggles, ←/→ move too.
+          {/* « selects up the list, » down (as rendered); ←/→ move too. Play (▶/space) needs
+              the tab's audio, so ssh sessions browse only — the row link opens Spotify.
               fixed-width box spanning the GITHUB stats row above: « sits on its first
               column, » exactly on the ★ column — nothing moves across flat/preview modes */}
           <box style={{ flexDirection: "row", justifyContent: "space-between", width: controlsWidth ?? 33, alignSelf: "flex-start" }}>
             <box onMouseDown={() => moveSel(-1)}>
               <text bg={PANEL} fg={MUTED}>{"«"}</text>
             </box>
-            <box onMouseDown={() => (listening ? stopListen() : startListen(sel))}>
-              <text bg={PANEL} fg={listening ? ACCENT : MUTED}>{listening ? "■" : "▶"}</text>
-            </box>
+            {volume ? (
+              <box onMouseDown={() => (listening ? stopListen() : startListen(sel))}>
+                <text bg={PANEL} fg={listening ? ACCENT : MUTED}>{listening ? "■" : "▶"}</text>
+              </box>
+            ) : null}
             <box onMouseDown={() => moveSel(1)}>
               <text bg={PANEL} fg={MUTED}>{"»"}</text>
             </box>
