@@ -54,7 +54,7 @@ async function renderWidget() {
   return r;
 }
 
-test("playing: 2 previous (oldest first), now playing, 2 up next", async () => {
+test("playing: 2 up next above (soonest nearest), now playing, 2 previous below (newest nearest)", async () => {
   state = {
     configured: true,
     isPlaying: true,
@@ -72,8 +72,8 @@ test("playing: 2 previous (oldest first), now playing, 2 up next", async () => {
   const frame = captureCharFrame();
   expect(frame).toContain("NOW PLAYING");
   expect(frame).toContain("1:05 / 3:00");
-  // timeline order: oldest history at the top, queue below the current track
-  const order = ["Prev Oldest", "Prev Newest", "♫ Current Song", "» Next One", "» Next Two"];
+  // conveyor order: queue above (immediate next adjacent to the focus), history below
+  const order = ["» Next Two", "» Next One", "♫ Current Song", "· Prev Newest", "· Prev Oldest"];
   const at = order.map((s) => frame.indexOf(s));
   expect(at.every((i) => i >= 0)).toBe(true);
   expect([...at].sort((a, b) => a - b)).toEqual(at);

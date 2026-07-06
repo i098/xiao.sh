@@ -128,6 +128,17 @@ function persistHistory() {
   }
 }
 
+// The API only records a track once it finishes (and is throttled above), so on its own the
+// history rows freeze while tracks change; `observed` sees every change instantly. Merge both,
+// newest first, deduped by name (the same key the widget compares with).
+function mergedRecent(): SpotifyEntry[] {
+  const seen = new Set<string>();
+  return [...observed, ...lastRecent]
+    .sort((a, b) => (b.playedAt ?? "").localeCompare(a.playedAt ?? ""))
+    .filter((e) => (seen.has(e.track.name) ? false : (seen.add(e.track.name), true)))
+    .slice(0, 8);
+}
+
 // SPOTIFY_MOCK=1 — offline/UI work: nothing playing, 8 fake recent tracks (staggered
 // timestamps) so the idle widget and its display cap are visible without hitting Spotify.
 function mockState(): SpotifyState {
@@ -186,9 +197,10 @@ async function fetchSpotify(): Promise<SpotifyState> {
       }
     }
 
-    if (current && observed[0]?.track.name !== current.name)
+    if (current && observed[0]?.track.name !== current.name) {
       observed = [{ track: current, playedAt: new Date().toISOString() }, ...observed].slice(0, 8);
       persistHistory();
+    }
 
     // queue only matters while playing; recent is throttled — most polls are a single request
     const wantRecent = Date.now() - recentFetchedAt > 60_000 && Date.now() >= recentRetryAt;
@@ -197,13 +209,11 @@ async function fetchSpotify(): Promise<SpotifyState> {
       isPlaying ? fetch(QUEUE_URL, { headers: auth, signal: AbortSignal.timeout(5000) }).catch(() => null) : null,
     ]);
 
-    let recent: SpotifyEntry[] = lastRecent.length ? lastRecent : observed;
     if (recRes?.ok) {
       const data = (await recRes.json()) as { items?: Array<{ track?: RawItem; played_at?: string }> };
-      recent = (data?.items ?? [])
+      lastRecent = (data?.items ?? [])
         .filter((it) => it?.track)
         .map((it) => ({ track: trackFrom(it.track), playedAt: typeof it.played_at === "string" ? it.played_at : null }));
-      lastRecent = recent;
       recentFetchedAt = Date.now();
       persistHistory();
     } else if (recRes?.status === 429) {
@@ -211,6 +221,7 @@ async function fetchSpotify(): Promise<SpotifyState> {
       recentRetryAt = Date.now() + Math.min(after, 3600) * 1000;
       persistHistory();
     }
+    const recent = mergedRecent();
 
     let queue: SpotifyTrack[] = [];
     if (queueRes?.ok) {
@@ -220,6 +231,6 @@ async function fetchSpotify(): Promise<SpotifyState> {
 
     return { configured: true, isPlaying, current, progressMs, durationMs, recent, queue };
   } catch {
-    return { ...EMPTY(true), recent: lastRecent };
+    return { ...EMPTY(true), recent: mergedRecent() };
   }
 }

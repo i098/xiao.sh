@@ -292,11 +292,10 @@ export function NowPlaying({ volume, controlsWidth }: { volume?: VolumeChannel; 
   }, [shownProgress, state]);
   if (!state || !state.configured) return null;
   const playing = state.isPlaying && state.current ? state.current : null;
-  // playing → 2 previous + current + 2 up next; idle → 6 most-recent
+  // playing → 2 up next + current + 2 previous; idle → 6 most-recent
   const previous = state.recent
     .filter((e) => !playing || e.track.name !== playing.name)
     .slice(0, playing ? 2 : 6);
-  if (playing) previous.reverse(); // oldest first, so the timeline reads previous -> current -> up next
   if (!playing && previous.length === 0) {
     return (
       <Stat label="RECENTLY PLAYED">
@@ -307,7 +306,9 @@ export function NowPlaying({ volume, controlsWidth }: { volume?: VolumeChannel; 
     );
   }
   // the focus block: my live track, or the preview the visitor is playing — same layout.
-  // Around it: dim rows above (history / newer neighbours) and » rows below (queue / older).
+  // Playing reads like a conveyor: » queue above (soonest next to the focus), · history below
+  // (newest next to the focus) — every track advance slides the whole column down one row.
+  // Preview keeps list order: newer neighbours above, older below.
   const preview = !playing && listening ? previous[sel] : undefined;
   const focus = playing ?? preview?.track ?? null;
   // preview window: one less track than the flat list shows, so window rows + the progress
@@ -315,9 +316,13 @@ export function NowPlaying({ volume, controlsWidth }: { volume?: VolumeChannel; 
   // (at the list edges the window extends the other way instead of shrinking)
   const winSize = Math.min(5, Math.max(1, previous.length - 1));
   const winStart = Math.max(0, Math.min(sel - 2, previous.length - winSize));
-  const beforeRows = playing || !preview ? previous : previous.slice(winStart, sel);
+  const beforeRows = playing
+    ? state.queue.slice(0, 2).reverse().map((t) => ({ track: t, playedAt: null }))
+    : !preview
+      ? previous
+      : previous.slice(winStart, sel);
   const nextTracks = playing
-    ? state.queue.slice(0, 2)
+    ? previous.map((e) => e.track)
     : preview
       ? previous.slice(sel + 1, winStart + winSize).map((e) => e.track)
       : [];
@@ -335,8 +340,8 @@ export function NowPlaying({ volume, controlsWidth }: { volume?: VolumeChannel; 
     const artistTxt = artists.length && budget >= 4 ? truncate(`${sep}${artists.join(", ")}`, budget) : "";
     return { nameFit, artistTxt };
   };
-  // hierarchy: dim indented history above, bright focus block set off by blank lines,
-  // dim indented queue below, controls centered at the bottom. Secondary rows stay
+  // hierarchy: dim indented queue above, bright focus block set off by blank lines,
+  // dim indented history below, controls centered at the bottom. Secondary rows stay
   // clickable but drop the underline so only the focus track carries visual weight.
   return (
     <Stat label={playing ? "NOW PLAYING" : preview ? "PREVIEW" : "RECENTLY PLAYED"} meta={meta}>
@@ -347,7 +352,7 @@ export function NowPlaying({ volume, controlsWidth }: { volume?: VolumeChannel; 
         // the preview (1-char « ▶ » are untappable on a phone). The Spotify link moves to the
         // focus row; my-live-playback rows keep their links.
         const tappable = Boolean(volume) && !playing;
-        const prefix = !flat ? "  · " : isSel ? "▸ " : "· ";
+        const prefix = playing ? "  » " : !flat ? "  · " : isSel ? "▸ " : "· ";
         const fit = fitRow(prefix.length, e.track.name, e.track.artists);
         const row = (
           <text key={tappable ? undefined : i} bg={PANEL}>
@@ -397,7 +402,7 @@ export function NowPlaying({ volume, controlsWidth }: { volume?: VolumeChannel; 
         const fit = fitRow(4, t.name, t.artists);
         const row = (
           <text key={playing ? `q${i}` : undefined} bg={PANEL}>
-            <span fg={FAINT}>{"  » "}</span>
+            <span fg={FAINT}>{playing ? "  · " : "  » "}</span>
             {t.songUrl && playing ? (
               <a href={t.songUrl} fg={MUTED}>
                 {fit.nameFit}
