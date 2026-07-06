@@ -48,3 +48,6 @@ next-env.d.ts
 # sentrux caches (keep rules.toml + baseline.json)
 .sentrux/cache.bin
 .sentrux/churn.bin
+
+# playwright linkedin session (auth cookies — never commit)
+linkedin-session.json
