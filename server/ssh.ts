@@ -11,7 +11,11 @@ const HOST_KEY_PATH = path.join(process.cwd(), ".data", "ssh-host-key");
 // every client shares one source IP — global caps only.
 // ponytail: no per-IP limits; add a PROXY-protocol shim on the relay if one abuser
 // ever needs singling out.
-const MAX_CLIENTS = 32;
+// ~14 MB RSS per session (opentui renderer + React tree). At 48 that's ~670 MB,
+// leaving headroom under the pod's 1Gi limit for the web terminal + base process.
+// Raise the k8s memory limit before pushing this higher. CPU (2 cores) only caps
+// the pond frame rate under contention, not the ceiling.
+const MAX_CLIENTS = 48;
 const IDLE_MS = 15 * 60 * 1000; // no keystrokes (output always flows — pond animates)
 const MAX_SESSION_MS = 2 * 60 * 60 * 1000;
 
@@ -27,15 +31,35 @@ function hostKey() {
 
 let activeClients = 0;
 
+// Shown to overflow visitors when every slot is taken, instead of a bare
+// mid-handshake drop that reads as "site down". The renderer never starts for
+// these, so greeting them stays cheap under a traffic spike.
+const POND_FULL = [
+  "\x1b[2J\x1b[H",
+  "\r\n",
+  "  \x1b[1m🐟  the pond is full\x1b[0m\r\n",
+  "\r\n",
+  `  ${MAX_CLIENTS} people are exploring right now.\r\n`,
+  "  give it a moment and reconnect.\r\n",
+  "\r\n",
+].join("");
+
 const server = new ssh2.Server({ hostKeys: [hostKey()] }, (client) => {
-  if (activeClients >= MAX_CLIENTS) {
-    client.end();
-    return;
-  }
-  activeClients += 1;
-  client.on("close", () => {
+  // Claim the slot synchronously at connect (before any await) so a burst of
+  // simultaneous connections can't all slip past the cap. Overflow clients still
+  // finish the handshake so we can render POND_FULL, but never claim a slot.
+  const overCap = activeClients >= MAX_CLIENTS;
+  let counted = false;
+  const release = () => {
+    if (!counted) return;
+    counted = false;
     activeClients -= 1;
-  });
+  };
+  if (!overCap) {
+    activeClients += 1;
+    counted = true;
+  }
+  client.on("close", release);
 
   // Public portfolio: anyone may connect. We never expose a shell or run commands,
   // only our own TUI, so open auth carries no command-execution risk.
@@ -78,6 +102,14 @@ const server = new ssh2.Server({ hostKeys: [hostKey()] }, (client) => {
         stream.columns = cols;
         stream.rows = rows;
 
+        // Cap reached: greet and hang up. No renderer, so this is cheap even
+        // when a viral spike floods the endpoint.
+        if (overCap) {
+          stream.write(POND_FULL);
+          setTimeout(() => stream.end(), 4000);
+          return;
+        }
+
         renderer = await startSession({ stdin: stream, stdout: stream, width: cols, height: rows }, () => {
           try {
             renderer?.destroy();
@@ -107,6 +139,7 @@ const server = new ssh2.Server({ hostKeys: [hostKey()] }, (client) => {
 
         stream.on("close", () => {
           clearInterval(reaper);
+          release();
           try {
             renderer?.destroy();
           } catch {
