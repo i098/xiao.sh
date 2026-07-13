@@ -242,7 +242,7 @@ function isRetriable(status: number) {
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export async function ask(messages: ChatMessage[]): Promise<AskResult> {
+function prepareConversation(messages: ChatMessage[]): { conversation: ChatMessage[] } | AskResult {
   const conversation = messages
     .filter((m) => (m.role === "user" || m.role === "assistant") && m.content.trim())
     .map((m) => ({ role: m.role, content: m.content.trim() }))
@@ -252,6 +252,13 @@ export async function ask(messages: ChatMessage[]): Promise<AskResult> {
   if (conversation[conversation.length - 1].role !== "user") {
     return { error: "Last message must be from the user." };
   }
+  return { conversation };
+}
+
+export async function ask(messages: ChatMessage[]): Promise<AskResult> {
+  const prepared = prepareConversation(messages);
+  if (!("conversation" in prepared)) return prepared;
+  const { conversation } = prepared;
 
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return { error: "OPENROUTER_API_KEY is not configured." };
