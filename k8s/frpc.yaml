@@ -1,0 +1,75 @@
+# frpc: dials OUT to the fly relay (xiao-tui.fly.dev) and reverse-tunnels the ssh TUI.
+# Home network stays outbound-only, same posture as cloudflared.
+# Token and CA secrets are provisioned separately; see fly/README.md.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frpc-config
+  namespace: xiao
+data:
+  frpc.toml: |
+    serverAddr = "xiao-tui.fly.dev"
+    serverPort = 7000
+    auth.method = "token"
+    auth.token = "{{ .Envs.FRP_TOKEN }}"
+    transport.tls.enable = true
+    transport.tls.trustedCaFile = "/etc/frp/tls/ca.crt"
+    transport.tls.serverName = "xiao-tui.fly.dev"
+    loginFailExit = false
+
+    [[proxies]]
+    name = "ssh-tui"
+    type = "tcp"
+    localIP = "xiao.xiao.svc.cluster.local"
+    localPort = 2222
+    remotePort = 2222
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frpc
+  namespace: xiao
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frpc
+  template:
+    metadata:
+      labels:
+        app: frpc
+    spec:
+      containers:
+        - name: frpc
+          image: snowdreamtech/frpc:0.69.1
+          env:
+            - name: FRP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: xiao-frp
+                  key: token
+          volumeMounts:
+            - name: config
+              mountPath: /etc/frp/frpc.toml
+              subPath: frpc.toml
+              readOnly: true
+            - name: tls
+              mountPath: /etc/frp/tls
+              readOnly: true
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+      volumes:
+        - name: config
+          configMap:
+            name: frpc-config
+        - name: tls
+          secret:
+            secretName: xiao-frp-tls
+            items:
+              - key: ca.crt
+                path: ca.crt

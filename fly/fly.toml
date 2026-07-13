@@ -1,0 +1,39 @@
+# frps relay: public raw-TCP front for the SSH TUI (tui.xiao.sh).
+# Visitors hit fly edge :22 -> frps -> reverse tunnel from frpc in the k3s cluster.
+# Deploy: fly deploy fly/  (dedicated IPv4 required for non-80/443 ports)
+app = "xiao-tui"
+primary_region = "sjc"
+
+[build]
+
+# Base64-encoded PEM values are stored as Fly secrets and decoded into files at deploy.
+[[files]]
+  guest_path = "/etc/frp/tls/server.crt"
+  secret_name = "FRP_SERVER_CERT"
+
+[[files]]
+  guest_path = "/etc/frp/tls/server.key"
+  secret_name = "FRP_SERVER_KEY"
+
+# public ssh
+[[services]]
+  protocol = "tcp"
+  internal_port = 2222
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  [[services.ports]]
+    port = 22
+
+# frpc control channel from the cluster (token + verified TLS)
+[[services]]
+  protocol = "tcp"
+  internal_port = 7000
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  [[services.ports]]
+    port = 7000
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory = "256mb"

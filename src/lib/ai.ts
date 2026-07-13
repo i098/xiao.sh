@@ -14,6 +14,9 @@ const MAX_CONVERSATION_MESSAGES = 50;
 const MAX_OPENROUTER_FALLBACK_MODELS = 3;
 const MAX_REQUEST_ATTEMPTS = 4;
 const RETRY_BACKOFF_MS = 350;
+const ASK_RATE_WINDOW_MS = 60_000;
+const MAX_ASKS_PER_WINDOW = 30;
+const MAX_CONCURRENT_ASKS = 8;
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 export type AskResult = { answer?: string; error?: string; model?: string };
@@ -35,6 +38,15 @@ type OpenRouterModel = {
 
 let modelPoolCache: { models: string[]; expiresAt: number } | null = null;
 let rotationCursor = 0;
+let activeAsks = 0;
+const askTimes: number[] = [];
+
+function globalAskAllowed(now: number) {
+  while (askTimes.length && now - askTimes[0] > ASK_RATE_WINDOW_MS) askTimes.shift();
+  if (askTimes.length >= MAX_ASKS_PER_WINDOW || activeAsks >= MAX_CONCURRENT_ASKS) return false;
+  askTimes.push(now);
+  return true;
+}
 
 function headers(apiKey: string) {
   return {
@@ -224,12 +236,13 @@ async function getModelOrder(apiKey: string) {
 }
 
 function isRetriable(status: number) {
-  return [429, 502, 503, 504, 529].includes(status);
+  // 500 included: free-pool models throw transient Internal Server Errors — rotate, don't die
+  return [429, 500, 502, 503, 504, 529].includes(status);
 }
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export async function ask(messages: ChatMessage[]): Promise<AskResult> {
+function prepareConversation(messages: ChatMessage[]): { conversation: ChatMessage[] } | AskResult {
   const conversation = messages
     .filter((m) => (m.role === "user" || m.role === "assistant") && m.content.trim())
     .map((m) => ({ role: m.role, content: m.content.trim() }))
@@ -239,6 +252,13 @@ export async function ask(messages: ChatMessage[]): Promise<AskResult> {
   if (conversation[conversation.length - 1].role !== "user") {
     return { error: "Last message must be from the user." };
   }
+  return { conversation };
+}
+
+export async function ask(messages: ChatMessage[]): Promise<AskResult> {
+  const prepared = prepareConversation(messages);
+  if (!("conversation" in prepared)) return prepared;
+  const { conversation } = prepared;
 
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return { error: "OPENROUTER_API_KEY is not configured." };
@@ -247,46 +267,54 @@ export async function ask(messages: ChatMessage[]): Promise<AskResult> {
   const ageAnswer = buildAgeAnswer(latest);
   if (ageAnswer) return { answer: ageAnswer, model: "local/profile-facts" };
 
-  const context = await buildProfileContext();
-  const payload: OpenRouterMessage[] = [{ role: "system", content: context }, ...conversation];
+  if (!globalAskAllowed(Date.now())) return { error: "Chat is busy right now. Try again in a minute." };
 
-  let lastError = "OpenRouter request failed.";
-  const initialOrder = await getModelOrder(apiKey);
+  activeAsks += 1;
+  try {
+    const context = await buildProfileContext();
+    const payload: OpenRouterMessage[] = [{ role: "system", content: context }, ...conversation];
 
-  for (let attempt = 0; attempt < MAX_REQUEST_ATTEMPTS; attempt += 1) {
-    const order = attempt === 0 ? initialOrder : await getModelOrder(apiKey);
-    const [primary, ...rest] = order;
-    try {
-      const res = await fetch(OPENROUTER_URL, {
-        method: "POST",
-        headers: headers(apiKey),
-        body: JSON.stringify({
-          model: primary ?? "openrouter/free",
-          models: rest.slice(0, MAX_OPENROUTER_FALLBACK_MODELS),
-          provider: { allow_fallbacks: true },
-          temperature: 0.2,
-          // no max_tokens: let the model run to its natural stop — the system prompt
-          // already asks for concise answers. exclude keeps reasoning out of content.
-          reasoning: { exclude: true },
-          stream: false,
-          messages: payload,
-        }),
-      });
-      const data = (await res.json()) as OpenRouterResponse;
-      if (res.ok && !data.error) {
-        const answer = cleanAnswer(data.choices?.[0]?.message?.content ?? "");
-        if (answer) return { answer, model: data.model ?? primary };
-        lastError = "OpenRouter returned empty content.";
-      } else {
-        const status = typeof data.error?.code === "number" ? data.error.code : res.status || 502;
-        lastError = data.error?.message ?? lastError;
-        if (!isRetriable(status)) break;
+    let lastError = "OpenRouter request failed.";
+    const initialOrder = await getModelOrder(apiKey);
+
+    for (let attempt = 0; attempt < MAX_REQUEST_ATTEMPTS; attempt += 1) {
+      const order = attempt === 0 ? initialOrder : await getModelOrder(apiKey);
+      const [primary, ...rest] = order;
+      try {
+        const res = await fetch(OPENROUTER_URL, {
+          method: "POST",
+          headers: headers(apiKey),
+          body: JSON.stringify({
+            model: primary ?? "openrouter/free",
+            models: rest.slice(0, MAX_OPENROUTER_FALLBACK_MODELS),
+            provider: { allow_fallbacks: true },
+            temperature: 0.2,
+            // no max_tokens: let the model run to its natural stop — the system prompt
+            // already asks for concise answers. exclude keeps reasoning out of content.
+            reasoning: { exclude: true },
+            stream: false,
+            messages: payload,
+          }),
+        });
+        const data = (await res.json()) as OpenRouterResponse;
+        if (res.ok && !data.error) {
+          const answer = cleanAnswer(data.choices?.[0]?.message?.content ?? "");
+          if (answer) return { answer, model: data.model ?? primary };
+          lastError = "OpenRouter returned empty content.";
+        } else {
+          const status = typeof data.error?.code === "number" ? data.error.code : res.status || 502;
+          lastError = data.error?.message ?? lastError;
+          if (!isRetriable(status)) break;
+        }
+      } catch (error) {
+        lastError = `OpenRouter request failed: ${error instanceof Error ? error.message : "unknown"}`;
       }
-    } catch (error) {
-      lastError = `OpenRouter request failed: ${error instanceof Error ? error.message : "unknown"}`;
+      if (attempt < MAX_REQUEST_ATTEMPTS - 1) await delay(RETRY_BACKOFF_MS * (attempt + 1));
     }
-    if (attempt < MAX_REQUEST_ATTEMPTS - 1) await delay(RETRY_BACKOFF_MS * (attempt + 1));
-  }
 
-  return { error: lastError };
+    // all attempts exhausted — visitors get something human, not an upstream status line
+    return { error: `Chat is busy right now (${lastError}). Try again in a moment.` };
+  } finally {
+    activeAsks -= 1;
+  }
 }

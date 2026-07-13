@@ -16,3 +16,8 @@ out
 .env.*
 !.env.example
 linkedin-session.json
+server/.host-key
+*.key
+*.pem
+*.p12
+*.pfx

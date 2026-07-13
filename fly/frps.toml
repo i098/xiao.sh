@@ -1,0 +1,18 @@
+# frp server on fly. Token comes from a fly secret (FRP_TOKEN) via frp's env templating.
+# NB: frp runs the whole file through Go text/template BEFORE parsing TOML — never put
+# braces in comments.
+bindPort = 7000
+
+auth.method = "token"
+auth.token = "{{ .Envs.FRP_TOKEN }}"
+
+# Present a stable CA-signed identity so frpc can authenticate this relay.
+transport.tls.force = true
+transport.tls.certFile = "/etc/frp/tls/server.crt"
+transport.tls.keyFile = "/etc/frp/tls/server.key"
+
+# The only tunnel a client may open is the ssh one.
+allowPorts = [
+  { single = 2222 },
+]
+maxPortsPerClient = 1

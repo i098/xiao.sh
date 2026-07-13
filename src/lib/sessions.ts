@@ -3,8 +3,9 @@ import path from "node:path";
 import type { ChatMessage } from "@/lib/ai";
 
 // Saved chat transcripts, stored server-side keyed by a sanitized slug.
-// ponytail: global namespace, no auth — anyone can /resume any saved name. Fine for a personal
-// site; gate by a per-session token if that ever matters.
+// ponytail: global namespace, no auth — anyone can /resume any saved name. Public SSH
+// disables saved chats entirely for this reason (tui/session.tsx); browser and standalone
+// keep them. Gate by a per-session token if that ever matters.
 const DIR = path.join(process.cwd(), ".data", "sessions");
 
 export type SavedSession = { name: string; slug: string; count: number; savedAt: string };
