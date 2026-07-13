@@ -184,6 +184,9 @@ const server = new ssh2.Server({ hostKeys: [hostKey()], keepaliveInterval: 30_00
         // client that vanishes mid-queue never leaves a renderer mounted on a dead stream.
         let closed = false;
         let reaper: ReturnType<typeof setInterval> | null = null;
+        stream.on("error", () => {
+          // ignore channel write-after-end noise from disconnecting clients
+        });
         stream.on("close", () => {
           closed = true;
           if (reaper) clearInterval(reaper);
