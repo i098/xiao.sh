@@ -140,7 +140,7 @@ bun run create:linkedin-session  # interactive session capture (optional)
 bun run fetch:linkedin-assets    # pull post images/thumbnails
 ```
 
-After regenerating data or photos, `bun test` runs the privacy regression tests: they check that the published snapshot and photos stay free of private identifiers, tracking params, and EXIF metadata.
+After regenerating photos, `bun test` checks that the published image files stay free of EXIF metadata.
 
 Authorize Spotify once to get a refresh token (register `http://127.0.0.1:8888/callback` as a redirect URI in your Spotify app first):
 

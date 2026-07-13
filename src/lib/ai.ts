@@ -1,5 +1,5 @@
 // Lean port of the old /api/ai-search route for the TUI.
-// Keeps: free-model discovery + rotation, profile-context Q&A, retry loop.
+// Keeps: free-model discovery + rotation, profile-context Q&A, age shortcut, retry loop.
 // Dropped: the email-compose tool (mailto can't open in a terminal). Re-add if wanted.
 import { getLinkedInSnapshot } from "@/lib/linkedin";
 import { profile } from "@/lib/profile";
@@ -57,6 +57,33 @@ function headers(apiKey: string) {
   };
 }
 
+function parseDob(value: string | undefined) {
+  if (!value?.trim()) return null;
+  const us = value.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (us) {
+    const d = new Date(Date.UTC(+us[3], +us[1] - 1, +us[2]));
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  const parsed = new Date(value.trim());
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function computeAge(dob: Date, asOf: Date) {
+  let age = asOf.getUTCFullYear() - dob.getUTCFullYear();
+  const m = asOf.getUTCMonth() - dob.getUTCMonth();
+  const d = asOf.getUTCDate() - dob.getUTCDate();
+  if (m < 0 || (m === 0 && d < 0)) age -= 1;
+  return age;
+}
+
+function buildAgeAnswer(userMessage: string): string | null {
+  if (!/\b(age|how old|old is)\b/i.test(userMessage)) return null;
+  const dob = parseDob(profile.dob);
+  if (!dob) return "Age is not listed on this site.";
+  const asOf = new Date();
+  return `${profile.name} is ${computeAge(dob, asOf)} years old (DOB: ${profile.dob}).`;
+}
+
 async function buildProfileContext() {
   const linkedIn = await getLinkedInSnapshot().catch(() => null);
   const projectLines = projects
@@ -73,6 +100,9 @@ async function buildProfileContext() {
       }${links}`;
     })
     .join("\n");
+
+  const dob = parseDob(profile.dob);
+  const age = dob ? computeAge(dob, new Date()) : null;
 
   const linkedInLines = linkedIn
     ? [
@@ -96,6 +126,8 @@ async function buildProfileContext() {
     "Profile:",
     `Name: ${profile.name}`,
     `Role: ${profile.role}`,
+    `Date of Birth: ${profile.dob?.trim() ? profile.dob : "Not listed"}`,
+    age !== null ? `Age: ${age}` : "Age: Not listed",
     `Location: ${profile.location}`,
     `Education: ${profile.education}`,
     `Skills: ${profile.skills.join(", ")}`,
@@ -223,6 +255,11 @@ export async function ask(messages: ChatMessage[]): Promise<AskResult> {
 
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return { error: "OPENROUTER_API_KEY is not configured." };
+
+  const latest = conversation[conversation.length - 1].content;
+  const ageAnswer = buildAgeAnswer(latest);
+  if (ageAnswer) return { answer: ageAnswer, model: "local/profile-facts" };
+
   if (!globalAskAllowed(Date.now())) return { error: "Chat is busy right now. Try again in a minute." };
 
   activeAsks += 1;

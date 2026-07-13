@@ -67,6 +67,8 @@ const SECTION_ALLOWLIST = new Set([
   "Experience",
   "Education",
   "Skills",
+  "Certifications",
+  "Projects",
   "Publications",
   "Honors & Awards",
   "Courses",
@@ -108,19 +110,6 @@ function sanitizeSummary(value: string) {
   }
   result = result.replace(/\s{2,}/g, " ").trim();
   return result;
-}
-
-function canonicalLinkedInUrl(value: string) {
-  try {
-    const url = new URL(value);
-    if (url.hostname === "linkedin.com" || url.hostname.endsWith(".linkedin.com")) {
-      url.search = "";
-      url.hash = "";
-    }
-    return url.toString();
-  } catch {
-    return value;
-  }
 }
 
 function dedupeTextList(
@@ -218,10 +207,7 @@ function fallbackSnapshot(): LinkedInSnapshot {
   };
 }
 
-// Privacy gate for everything published: allowlisted sections only (no Certifications/
-// Projects), noise and dedupe filters, LinkedIn tracking params stripped. Both the runtime
-// loader below and scripts/sync-linkedin-about.ts route every snapshot through here.
-export function sanitizeLinkedInSnapshot(raw: unknown) {
+function normalizeSnapshot(raw: unknown) {
   if (!raw || typeof raw !== "object") return fallbackSnapshot();
   const value = raw as Partial<LinkedInSnapshot>;
 
@@ -283,7 +269,7 @@ export function sanitizeLinkedInSnapshot(raw: unknown) {
       location: typeof value.profile?.location === "string" ? value.profile.location : profile.location,
       linkedinUrl:
         typeof value.profile?.linkedinUrl === "string"
-          ? canonicalLinkedInUrl(value.profile.linkedinUrl)
+          ? value.profile.linkedinUrl
           : profile.links.linkedin,
       followerCount:
         typeof value.profile?.followerCount === "number" ? value.profile.followerCount : undefined,
@@ -299,7 +285,7 @@ export function sanitizeLinkedInSnapshot(raw: unknown) {
           .map((post) => {
             const item = post as Partial<LinkedInPost>;
             return {
-              url: typeof item.url === "string" ? canonicalLinkedInUrl(item.url) : "",
+              url: typeof item.url === "string" ? item.url : "",
               headline:
                 typeof item.headline === "string"
                   ? clipText(normalizeText(item.headline), 150)
@@ -334,7 +320,7 @@ export function sanitizeLinkedInSnapshot(raw: unknown) {
 async function loadLinkedInSnapshotFile() {
   const filePath = path.join(process.cwd(), "src", "data", "linkedin-about.json");
   const raw = await readFile(filePath, "utf8");
-  return sanitizeLinkedInSnapshot(JSON.parse(raw));
+  return normalizeSnapshot(JSON.parse(raw));
 }
 
 export async function getLinkedInSnapshot() {

@@ -1,6 +1,7 @@
 export type Profile = {
   name: string;
   role: string;
+  dob?: string;
   location: string;
   bio: string;
   education: string;
@@ -15,6 +16,7 @@ export type Profile = {
 export const profile: Profile = {
   name: "Jerry Xiao",
   role: "CS Student + Builder",
+  dob: "09/30/2007",
   location: "Boston, MA",
   bio: "",
   education: "Northeastern University",
