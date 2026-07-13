@@ -1,5 +1,5 @@
 // Lean port of the old /api/ai-search route for the TUI.
-// Keeps: free-model discovery + rotation, profile-context Q&A, age shortcut, retry loop.
+// Keeps: free-model discovery + rotation, profile-context Q&A, retry loop.
 // Dropped: the email-compose tool (mailto can't open in a terminal). Re-add if wanted.
 import { getLinkedInSnapshot } from "@/lib/linkedin";
 import { profile } from "@/lib/profile";
@@ -14,6 +14,9 @@ const MAX_CONVERSATION_MESSAGES = 50;
 const MAX_OPENROUTER_FALLBACK_MODELS = 3;
 const MAX_REQUEST_ATTEMPTS = 4;
 const RETRY_BACKOFF_MS = 350;
+const ASK_RATE_WINDOW_MS = 60_000;
+const MAX_ASKS_PER_WINDOW = 30;
+const MAX_CONCURRENT_ASKS = 8;
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 export type AskResult = { answer?: string; error?: string; model?: string };
@@ -35,6 +38,15 @@ type OpenRouterModel = {
 
 let modelPoolCache: { models: string[]; expiresAt: number } | null = null;
 let rotationCursor = 0;
+let activeAsks = 0;
+const askTimes: number[] = [];
+
+function globalAskAllowed(now: number) {
+  while (askTimes.length && now - askTimes[0] > ASK_RATE_WINDOW_MS) askTimes.shift();
+  if (askTimes.length >= MAX_ASKS_PER_WINDOW || activeAsks >= MAX_CONCURRENT_ASKS) return false;
+  askTimes.push(now);
+  return true;
+}
 
 function headers(apiKey: string) {
   return {
@@ -43,33 +55,6 @@ function headers(apiKey: string) {
     "HTTP-Referer": process.env.OPENROUTER_SITE_URL ?? "https://xiao.sh",
     "X-Title": process.env.OPENROUTER_SITE_NAME ?? "xiao.sh",
   };
-}
-
-function parseDob(value: string | undefined) {
-  if (!value?.trim()) return null;
-  const us = value.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (us) {
-    const d = new Date(Date.UTC(+us[3], +us[1] - 1, +us[2]));
-    if (!Number.isNaN(d.getTime())) return d;
-  }
-  const parsed = new Date(value.trim());
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-function computeAge(dob: Date, asOf: Date) {
-  let age = asOf.getUTCFullYear() - dob.getUTCFullYear();
-  const m = asOf.getUTCMonth() - dob.getUTCMonth();
-  const d = asOf.getUTCDate() - dob.getUTCDate();
-  if (m < 0 || (m === 0 && d < 0)) age -= 1;
-  return age;
-}
-
-function buildAgeAnswer(userMessage: string): string | null {
-  if (!/\b(age|how old|old is)\b/i.test(userMessage)) return null;
-  const dob = parseDob(profile.dob);
-  if (!dob) return "Age is not listed on this site.";
-  const asOf = new Date();
-  return `${profile.name} is ${computeAge(dob, asOf)} years old (DOB: ${profile.dob}).`;
 }
 
 async function buildProfileContext() {
@@ -88,9 +73,6 @@ async function buildProfileContext() {
       }${links}`;
     })
     .join("\n");
-
-  const dob = parseDob(profile.dob);
-  const age = dob ? computeAge(dob, new Date()) : null;
 
   const linkedInLines = linkedIn
     ? [
@@ -114,8 +96,6 @@ async function buildProfileContext() {
     "Profile:",
     `Name: ${profile.name}`,
     `Role: ${profile.role}`,
-    `Date of Birth: ${profile.dob?.trim() ? profile.dob : "Not listed"}`,
-    age !== null ? `Age: ${age}` : "Age: Not listed",
     `Location: ${profile.location}`,
     `Education: ${profile.education}`,
     `Skills: ${profile.skills.join(", ")}`,
@@ -224,7 +204,8 @@ async function getModelOrder(apiKey: string) {
 }
 
 function isRetriable(status: number) {
-  return [429, 502, 503, 504, 529].includes(status);
+  // 500 included: free-pool models throw transient Internal Server Errors — rotate, don't die
+  return [429, 500, 502, 503, 504, 529].includes(status);
 }
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -242,51 +223,54 @@ export async function ask(messages: ChatMessage[]): Promise<AskResult> {
 
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return { error: "OPENROUTER_API_KEY is not configured." };
+  if (!globalAskAllowed(Date.now())) return { error: "Chat is busy right now. Try again in a minute." };
 
-  const latest = conversation[conversation.length - 1].content;
-  const ageAnswer = buildAgeAnswer(latest);
-  if (ageAnswer) return { answer: ageAnswer, model: "local/profile-facts" };
+  activeAsks += 1;
+  try {
+    const context = await buildProfileContext();
+    const payload: OpenRouterMessage[] = [{ role: "system", content: context }, ...conversation];
 
-  const context = await buildProfileContext();
-  const payload: OpenRouterMessage[] = [{ role: "system", content: context }, ...conversation];
+    let lastError = "OpenRouter request failed.";
+    const initialOrder = await getModelOrder(apiKey);
 
-  let lastError = "OpenRouter request failed.";
-  const initialOrder = await getModelOrder(apiKey);
-
-  for (let attempt = 0; attempt < MAX_REQUEST_ATTEMPTS; attempt += 1) {
-    const order = attempt === 0 ? initialOrder : await getModelOrder(apiKey);
-    const [primary, ...rest] = order;
-    try {
-      const res = await fetch(OPENROUTER_URL, {
-        method: "POST",
-        headers: headers(apiKey),
-        body: JSON.stringify({
-          model: primary ?? "openrouter/free",
-          models: rest.slice(0, MAX_OPENROUTER_FALLBACK_MODELS),
-          provider: { allow_fallbacks: true },
-          temperature: 0.2,
-          // no max_tokens: let the model run to its natural stop — the system prompt
-          // already asks for concise answers. exclude keeps reasoning out of content.
-          reasoning: { exclude: true },
-          stream: false,
-          messages: payload,
-        }),
-      });
-      const data = (await res.json()) as OpenRouterResponse;
-      if (res.ok && !data.error) {
-        const answer = cleanAnswer(data.choices?.[0]?.message?.content ?? "");
-        if (answer) return { answer, model: data.model ?? primary };
-        lastError = "OpenRouter returned empty content.";
-      } else {
-        const status = typeof data.error?.code === "number" ? data.error.code : res.status || 502;
-        lastError = data.error?.message ?? lastError;
-        if (!isRetriable(status)) break;
+    for (let attempt = 0; attempt < MAX_REQUEST_ATTEMPTS; attempt += 1) {
+      const order = attempt === 0 ? initialOrder : await getModelOrder(apiKey);
+      const [primary, ...rest] = order;
+      try {
+        const res = await fetch(OPENROUTER_URL, {
+          method: "POST",
+          headers: headers(apiKey),
+          body: JSON.stringify({
+            model: primary ?? "openrouter/free",
+            models: rest.slice(0, MAX_OPENROUTER_FALLBACK_MODELS),
+            provider: { allow_fallbacks: true },
+            temperature: 0.2,
+            // no max_tokens: let the model run to its natural stop — the system prompt
+            // already asks for concise answers. exclude keeps reasoning out of content.
+            reasoning: { exclude: true },
+            stream: false,
+            messages: payload,
+          }),
+        });
+        const data = (await res.json()) as OpenRouterResponse;
+        if (res.ok && !data.error) {
+          const answer = cleanAnswer(data.choices?.[0]?.message?.content ?? "");
+          if (answer) return { answer, model: data.model ?? primary };
+          lastError = "OpenRouter returned empty content.";
+        } else {
+          const status = typeof data.error?.code === "number" ? data.error.code : res.status || 502;
+          lastError = data.error?.message ?? lastError;
+          if (!isRetriable(status)) break;
+        }
+      } catch (error) {
+        lastError = `OpenRouter request failed: ${error instanceof Error ? error.message : "unknown"}`;
       }
-    } catch (error) {
-      lastError = `OpenRouter request failed: ${error instanceof Error ? error.message : "unknown"}`;
+      if (attempt < MAX_REQUEST_ATTEMPTS - 1) await delay(RETRY_BACKOFF_MS * (attempt + 1));
     }
-    if (attempt < MAX_REQUEST_ATTEMPTS - 1) await delay(RETRY_BACKOFF_MS * (attempt + 1));
-  }
 
-  return { error: lastError };
+    // all attempts exhausted — visitors get something human, not an upstream status line
+    return { error: `Chat is busy right now (${lastError}). Try again in a moment.` };
+  } finally {
+    activeAsks -= 1;
+  }
 }

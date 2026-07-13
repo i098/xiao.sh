@@ -3,6 +3,7 @@ import path from "node:path";
 import { BrowserContext, chromium } from "playwright";
 import { profile } from "../src/lib/profile";
 import { projects } from "../src/lib/projects";
+import { sanitizeLinkedInSnapshot } from "../src/lib/linkedin";
 
 type RawPost = {
   url: string;
@@ -71,8 +72,6 @@ const DETAIL_SECTION_PATHS: Array<{ slug: string; title: string }> = [
   { slug: "experience", title: "Experience" },
   { slug: "education", title: "Education" },
   { slug: "skills", title: "Skills" },
-  { slug: "certifications", title: "Certifications" },
-  { slug: "projects", title: "Projects" },
   { slug: "languages", title: "Languages" },
   { slug: "publications", title: "Publications" },
   { slug: "honors", title: "Honors & Awards" },
@@ -487,10 +486,6 @@ function buildOpenRouterCleanupInput(snapshot: LinkedInSnapshot) {
         items: pickSectionItems(sections, "Education", 6),
       },
       {
-        title: "Certifications",
-        items: pickSectionItems(sections, "Certifications", 6),
-      },
-      {
         title: "Languages",
         items: pickSectionItems(sections, "Languages", 6),
       },
@@ -529,7 +524,7 @@ async function cleanSnapshotWithOpenRouter(snapshot: LinkedInSnapshot) {
     "}",
     "Rules:",
     "- Keep only meaningful, deduplicated entries.",
-    "- Prioritize sections: Experience, Education, Certifications, Languages, Skills.",
+    "- Prioritize sections: Experience, Education, Languages, Skills.",
     "- For section items keep concise one-line entries.",
     "- Remove CTA noise like 'Show credential' and duplicated phrases.",
     "- Keep at most 6 items per section.",
@@ -1395,7 +1390,8 @@ async function main() {
   };
 
   const cleanedSnapshot = await cleanSnapshotWithOpenRouter(snapshot);
-  await writeFile(outputPath, JSON.stringify(cleanedSnapshot, null, 2));
+  const publicSnapshot = sanitizeLinkedInSnapshot(cleanedSnapshot);
+  await writeFile(outputPath, JSON.stringify(publicSnapshot, null, 2));
 
   await browser.close();
   console.log(`wrote ${outputPath}`);

@@ -34,6 +34,8 @@ import { ACCENT, BARS, ERR, FAINT, INK, MUTED, PANEL, SEL_BG, SEP, Stat, commas,
 import { NowPlaying, VolumeBar, type VolumeChannel } from "./music";
 
 const LIST_W = 30;
+const MAX_CHAT_INPUT_CHARS = 2_000;
+const MAX_CHAT_MESSAGES = 50;
 
 type Screen = "home" | "projects" | "about" | "chat";
 
@@ -58,6 +60,18 @@ const HELP_TEXT = [
   "  /home /projects /about /chat   (or press h p a c)",
   "SCROLL",
   "  PageUp / PageDown   ·   ↑ / ↓ when the input is empty",
+].join("\n");
+const PUBLIC_SSH_HELP_TEXT = [
+  "COMMANDS",
+  "  /help              show this",
+  "  /clear             wipe history",
+  "  /exit              back to home",
+  "NAVIGATE",
+  "  /home /projects /about /chat   (or press h p a c)",
+  "SCROLL",
+  "  PageUp / PageDown   ·   ↑ / ↓ when the input is empty",
+  "",
+  "Saved chats are disabled on public SSH sessions.",
 ].join("\n");
 
 function compactLanguage(value: string) {
@@ -266,6 +280,7 @@ export default function App({
   onExit,
   volume,
   pond = true,
+  allowSavedSessions = true,
 }: {
   linkedIn: LinkedInSnapshot;
   visit: VisitInfo;
@@ -274,6 +289,8 @@ export default function App({
   volume?: VolumeChannel;
   // web sessions render the pond client-side on a canvas (web/pond.ts); ssh/local keep it here
   pond?: boolean;
+  // Public SSH has no visitor identity, so persisted transcripts would be shared globally.
+  allowSavedSessions?: boolean;
 }) {
   const [screen, setScreen] = useState<Screen>("home");
   const [booting, setBooting] = useState(true); // full-screen boot log on first mount
@@ -309,8 +326,9 @@ export default function App({
   }, []);
 
   const handleInput = useCallback((v: string) => {
-    inputRef.current = v;
-    setInput(v);
+    const bounded = v.slice(0, MAX_CHAT_INPUT_CHARS);
+    inputRef.current = bounded;
+    setInput(bounded);
   }, []);
   const resetInput = useCallback(() => {
     inputRef.current = "";
@@ -361,6 +379,8 @@ export default function App({
           setMessages([]);
         } else if (cmd === "exit" || cmd === "quit") {
           go("home");
+        } else if (!allowSavedSessions && ["save", "resume", "delete", "del", "rm"].includes(cmd)) {
+          pushAssistant("saved chats are disabled on public SSH sessions.");
         } else if (cmd === "save") {
           if (messagesRef.current.length === 0) {
             pushAssistant("nothing to save yet.");
@@ -387,14 +407,14 @@ export default function App({
             else setPicker({ items, index: 0, mode: "delete" });
           }
         } else if (cmd === "help") {
-          pushAssistant(HELP_TEXT);
+          pushAssistant(allowSavedSessions ? HELP_TEXT : PUBLIC_SSH_HELP_TEXT);
         } else {
           pushAssistant(`unknown command: /${cmd} — try /help`);
         }
         return;
       }
       recordQuestion(content);
-      const next = [...messagesRef.current, { role: "user" as const, content }];
+      const next = [...messagesRef.current, { role: "user" as const, content }].slice(-MAX_CHAT_MESSAGES);
       messagesRef.current = next;
       setMessages(next);
       setScroll(0);
@@ -402,13 +422,13 @@ export default function App({
       setSending(true);
       const result = await ask(next);
       const reply: ChatMessage = { role: "assistant", content: result.answer ?? result.error ?? "No response." };
-      const withReply = [...messagesRef.current, reply];
+      const withReply = [...messagesRef.current, reply].slice(-MAX_CHAT_MESSAGES);
       messagesRef.current = withReply;
       setMessages(withReply);
       setScroll(0);
       setSending(false);
     },
-    [sending, resetInput, go, pushAssistant, loadInto],
+    [allowSavedSessions, sending, resetInput, go, pushAssistant, loadInto],
   );
 
   useKeyboard((key) => {

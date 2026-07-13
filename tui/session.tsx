@@ -88,7 +88,15 @@ export async function startSession(
       origDestroy();
     };
     root.render(
-      <App linkedIn={linkedIn} visit={visit} distinctId={distinctId} onExit={onExit} volume={opts?.volume} pond={opts?.pond} />,
+      <App
+        linkedIn={linkedIn}
+        visit={visit}
+        distinctId={distinctId}
+        onExit={onExit}
+        volume={opts?.volume}
+        pond={opts?.pond}
+        allowSavedSessions={false}
+      />,
     );
   } finally {
     // hold the slot briefly so this session's first frame + GC settle before the next mounts
