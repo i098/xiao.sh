@@ -25,7 +25,7 @@ test("ask() enforces global concurrency cap and per-minute window", async () => 
   globalThis.fetch = (async () => {
     await new Promise<void>((resolve) => pending.push(resolve));
     return okResponse();
-  }) as typeof fetch;
+  }) as unknown as typeof fetch;
 
   const inflight = Array.from({ length: 8 }, () => ask(HI));
   await Bun.sleep(20); // let all 8 enter the in-flight section
@@ -38,7 +38,7 @@ test("ask() enforces global concurrency cap and per-minute window", async () => 
 
   // Phase 2: same 60s window — sequential asks until the window cap trips.
   // Rejected asks are not counted, so total admitted must be exactly 30.
-  globalThis.fetch = (async () => okResponse()) as typeof fetch;
+  globalThis.fetch = (async () => okResponse()) as unknown as typeof fetch;
   let admitted = 8;
   let busyError: string | undefined;
   for (let i = 0; i < 30; i += 1) {
