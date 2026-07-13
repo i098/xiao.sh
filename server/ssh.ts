@@ -180,6 +180,22 @@ const server = new ssh2.Server({ hostKeys: [hostKey()], keepaliveInterval: 30_00
         stream.columns = cols;
         stream.rows = rows;
 
+        // Register close teardown before the (possibly mount-throttled) await below, so a
+        // client that vanishes mid-queue never leaves a renderer mounted on a dead stream.
+        let closed = false;
+        let reaper: ReturnType<typeof setInterval> | null = null;
+        stream.on("close", () => {
+          closed = true;
+          if (reaper) clearInterval(reaper);
+          if (resizeTimer) clearTimeout(resizeTimer);
+          release();
+          try {
+            renderer?.destroy();
+          } catch {
+            // already gone
+          }
+        });
+
         renderer = await startSession({ stdin: stream, stdout: stream, width: cols, height: rows }, () => {
           try {
             renderer?.destroy();
@@ -189,13 +205,22 @@ const server = new ssh2.Server({ hostKeys: [hostKey()], keepaliveInterval: 30_00
           stream.end();
         });
 
+        if (closed || stream.destroyed) {
+          try {
+            renderer.destroy();
+          } catch {
+            // already gone
+          }
+          return;
+        }
+
         // Reap abandoned/parked sessions: 5 min without a keystroke or 2 h absolute.
         const startedAt = Date.now();
         let lastInput = startedAt;
         stream.on("data", () => {
           lastInput = Date.now();
         });
-        const reaper = setInterval(() => {
+        reaper = setInterval(() => {
           const now = Date.now();
           if (now - lastInput > IDLE_MS || now - startedAt > MAX_SESSION_MS) {
             try {
@@ -206,17 +231,6 @@ const server = new ssh2.Server({ hostKeys: [hostKey()], keepaliveInterval: 30_00
             stream.end();
           }
         }, 30_000);
-
-        stream.on("close", () => {
-          clearInterval(reaper);
-          if (resizeTimer) clearTimeout(resizeTimer);
-          release();
-          try {
-            renderer?.destroy();
-          } catch {
-            // already gone
-          }
-        });
       };
       const startTui = (acc: (() => unknown) | undefined, reject: (() => void) | undefined) => {
         if (!acc || tuiStarted) {
@@ -234,7 +248,7 @@ const server = new ssh2.Server({ hostKeys: [hostKey()], keepaliveInterval: 30_00
       // pipes (`ssh host cmd` without -t, sftp) stay rejected.
       session.on("exec", (acc, reject) => {
         if (hasPty) startTui(acc, reject);
-        else reject();
+        else reject?.();
       });
       session.on("subsystem", (_a, reject) => reject?.());
     });
@@ -243,7 +257,6 @@ const server = new ssh2.Server({ hostKeys: [hostKey()], keepaliveInterval: 30_00
 
 // ssh2 does not time out clients that stall before sending an SSH header. Attach the
 // deadline to its underlying TCP server so it starts before ssh2 parses any bytes.
-server.maxConnections = MAX_TCP_CONNECTIONS;
 const tcpServer = (server as unknown as { _srv: TcpServer })._srv;
 tcpServer.prependListener("connection", (socket) => {
   const key = peerKey(socket.remoteAddress, socket.remotePort);
