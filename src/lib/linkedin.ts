@@ -218,6 +218,9 @@ function fallbackSnapshot(): LinkedInSnapshot {
   };
 }
 
+// Privacy gate for everything published: allowlisted sections only (no Certifications/
+// Projects), noise and dedupe filters, LinkedIn tracking params stripped. Both the runtime
+// loader below and scripts/sync-linkedin-about.ts route every snapshot through here.
 export function sanitizeLinkedInSnapshot(raw: unknown) {
   if (!raw || typeof raw !== "object") return fallbackSnapshot();
   const value = raw as Partial<LinkedInSnapshot>;

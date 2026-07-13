@@ -22,6 +22,7 @@ Or open [https://xiao.sh](https://xiao.sh) and you land straight in the same TUI
   Over SSH it is drawn server-side straight into the renderer's cell buffers each frame; in the browser it runs client-side on the same text grid, so ripples react instantly and nothing is streamed for it.
 - AI chat about the author, backed by [OpenRouter](https://openrouter.ai).
   It discovers free models, rotates through a pool, and retries across models on rate-limits and transient errors.
+  A global rate and concurrency cap keeps a flood of visitors from hammering the upstream API.
 - A Spotify now-playing widget on the home screen (current track, recent history, up-next queue).
   In the browser you can play a short track preview through the tab and watch an audio-reactive volume bar; over SSH the same widget and controls render, but no audio can reach the client.
 - A live GitHub pulse on the home screen (commits, contributions, stars, last push).
@@ -138,6 +139,8 @@ bun run sync:linkedin            # writes src/data/linkedin-about.json
 bun run create:linkedin-session  # interactive session capture (optional)
 bun run fetch:linkedin-assets    # pull post images/thumbnails
 ```
+
+After regenerating data or photos, `bun test` runs the privacy regression tests: they check that the published snapshot and photos stay free of private identifiers, tracking params, and EXIF metadata.
 
 Authorize Spotify once to get a refresh token (register `http://127.0.0.1:8888/callback` as a redirect URI in your Spotify app first):
 
