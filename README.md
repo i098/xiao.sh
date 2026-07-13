@@ -60,3 +60,7 @@ Without auth cookies the sync falls back to public metadata + post-derived conte
 - Profile: `src/lib/profile.ts`
 - Projects: `src/lib/projects.ts`
 - LinkedIn snapshot loader: `src/lib/linkedin.ts`
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE).

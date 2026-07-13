@@ -2,6 +2,7 @@
   "name": "xiao.sh",
   "version": "0.1.0",
   "private": true,
+  "license": "Apache-2.0",
   "scripts": {
     "tui": "bun tui/main.tsx",
     "start": "bun server/index.ts",
