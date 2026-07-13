@@ -19,6 +19,9 @@ const HOST_KEY_PATH = path.join(process.cwd(), ".data", "ssh-host-key");
 const MAX_CLIENTS = 48;
 const MAX_TCP_CONNECTIONS = 64;
 const AUTH_TIMEOUT_MS = 10_000;
+// Authed clients that never start the TUI (`ssh -N`) must not hold a slot forever;
+// interactive clients request pty+shell within milliseconds.
+const SHELL_TIMEOUT_MS = 30_000;
 const MIN_COLS = 20;
 const MAX_COLS = 240;
 const MIN_ROWS = 10;
@@ -138,6 +141,9 @@ const server = new ssh2.Server({ hostKeys: [hostKey()], keepaliveInterval: 30_00
   client.on("ready", () => {
     clearAuthDeadline();
     let sessionOpened = false;
+    let tuiStarted = false;
+    const shellDeadline = setTimeout(() => client.end(), SHELL_TIMEOUT_MS);
+    client.on("close", () => clearTimeout(shellDeadline));
     client.on("session", (accept, reject) => {
       if (sessionOpened) {
         reject();
@@ -148,7 +154,6 @@ const server = new ssh2.Server({ hostKeys: [hostKey()], keepaliveInterval: 30_00
       let cols = 80;
       let rows = 24;
       let hasPty = false;
-      let tuiStarted = false;
       let renderer: Awaited<ReturnType<typeof startSession>> | null = null;
       let resizeTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -241,6 +246,7 @@ const server = new ssh2.Server({ hostKeys: [hostKey()], keepaliveInterval: 30_00
           return;
         }
         tuiStarted = true;
+        clearTimeout(shellDeadline);
         void serveTui(acc).catch(() => client.end());
       };
       session.on("shell", (acc, reject) => startTui(acc, reject));
