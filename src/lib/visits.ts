@@ -8,12 +8,8 @@ type Store = { total: number; days: Record<string, number> };
 export type VisitInfo = { count: number; daily: number[] };
 
 async function read(): Promise<Store> {
-  try {
-    const parsed = JSON.parse((await get(KEY)) ?? "{}") as Partial<Store>;
-    return { total: parsed.total ?? 0, days: parsed.days ?? {} };
-  } catch {
-    return { total: 0, days: {} };
-  }
+  const parsed = JSON.parse((await get(KEY)) ?? "{}") as Partial<Store>;
+  return { total: parsed.total ?? 0, days: parsed.days ?? {} };
 }
 
 function dayKey(d: Date): string {
@@ -36,7 +32,12 @@ function lastDays(store: Store, n: number): number[] {
 // ponytail: plain read-modify-write — fine for portfolio traffic; concurrent visits (or KV's
 // eventual consistency across Cloudflare locations) can drop an increment.
 export async function recordVisit(): Promise<VisitInfo> {
-  const store = await read();
+  let store: Store;
+  try {
+    store = await read();
+  } catch {
+    return { count: 0, daily: lastDays({ total: 0, days: {} }, WINDOW) };
+  }
   store.total += 1;
   const k = dayKey(new Date());
   store.days[k] = (store.days[k] ?? 0) + 1;

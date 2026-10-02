@@ -107,20 +107,16 @@ let observed: SpotifyEntry[] = [];
 const HISTORY_KEY = "spotify.json";
 let historyLoaded: Promise<void> | null = null;
 async function loadHistory() {
-  try {
-    const p = JSON.parse((await get(HISTORY_KEY)) ?? "{}") as {
-      lastRecent?: SpotifyEntry[];
-      recentFetchedAt?: number;
-      recentRetryAt?: number;
-      observed?: SpotifyEntry[];
-    };
-    lastRecent = p.lastRecent ?? [];
-    recentFetchedAt = p.recentFetchedAt ?? 0;
-    recentRetryAt = p.recentRetryAt ?? 0;
-    observed = p.observed ?? [];
-  } catch {
-    // first boot — nothing persisted yet
-  }
+  const p = JSON.parse((await get(HISTORY_KEY)) ?? "{}") as {
+    lastRecent?: SpotifyEntry[];
+    recentFetchedAt?: number;
+    recentRetryAt?: number;
+    observed?: SpotifyEntry[];
+  };
+  lastRecent = p.lastRecent ?? [];
+  recentFetchedAt = p.recentFetchedAt ?? 0;
+  recentRetryAt = p.recentRetryAt ?? 0;
+  observed = p.observed ?? [];
 }
 async function persistHistory() {
   try {
@@ -179,8 +175,11 @@ export async function getSpotify(): Promise<SpotifyState> {
 }
 
 async function fetchSpotify(): Promise<SpotifyState> {
-  await (historyLoaded ??= loadHistory());
   try {
+    await (historyLoaded ??= loadHistory().catch((e) => {
+      historyLoaded = null;
+      throw e;
+    }));
     const token = await getAccessToken();
     if (!token) return EMPTY(false);
     const auth = { Authorization: `Bearer ${token}` };

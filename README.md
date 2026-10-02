@@ -134,7 +134,7 @@ SSH is not available there: Workers accept HTTP, not raw TCP.
 CLOUDFLARE_ACCOUNT_ID=... bun run deploy:cf   # plus CLOUDFLARE_API_TOKEN, or CLOUDFLARE_API_KEY + CLOUDFLARE_EMAIL
 ```
 
-The first `bun run deploy:cf` with the `xiao.sh` custom-domain route is the cutover: it takes over the hostname from the tunnel CNAME. Run it only after the bridge container and its cloudflared tunnel are stopped and the final `.data` has been copied into KV with `scripts/data-to-kv.sh`.
+The first `bun run deploy:cf` with the `xiao.sh` custom-domain route is the cutover: it takes over the hostname from the tunnel CNAME. Run it only after the bridge container and its cloudflared tunnel are stopped, the final `.data` has been copied into KV with `scripts/data-to-kv.sh`, and the existing `xiao.sh` DNS record (the tunnel CNAME) has been deleted, since a custom-domain deploy fails while a DNS record exists for the hostname.
 
 The older self-hosted setup exposed the browser side through a cloudflared tunnel and fronted SSH with a fly.io edge running frp (`ssh tui.xiao.sh`); see `fly/README.md` and `fly/` and `k8s/` for the manifests.
 

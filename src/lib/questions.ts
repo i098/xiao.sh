@@ -22,12 +22,8 @@ type Entry = { text: string; count: number };
 type Store = { items: Record<string, Entry>; last?: string };
 
 async function read(): Promise<Store> {
-  try {
-    const parsed = JSON.parse((await get(KEY)) ?? "{}") as Partial<Store>;
-    return { items: parsed.items ?? {}, last: parsed.last };
-  } catch {
-    return { items: {} };
-  }
+  const parsed = JSON.parse((await get(KEY)) ?? "{}") as Partial<Store>;
+  return { items: parsed.items ?? {}, last: parsed.last };
 }
 
 function normalize(text: string): string {
@@ -46,7 +42,12 @@ export async function recordQuestion(text: string): Promise<void> {
   if (PII.some((re) => re.test(t))) return; // never store contact info
   const key = normalize(t);
   if (!key) return;
-  const store = await read();
+  let store: Store;
+  try {
+    store = await read();
+  } catch {
+    return;
+  }
   const clipped = t.slice(0, MAX_LEN);
   store.items[key] = { text: clipped, count: (store.items[key]?.count ?? 0) + 1 };
   store.last = clipped; // most-recent question (already PII-filtered above)
