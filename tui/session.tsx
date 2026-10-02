@@ -48,7 +48,7 @@ export async function startSession(
 ): Promise<CliRenderer> {
   // re-read per session; getLinkedInSnapshot has its own 30s TTL so new visits get fresh data
   const linkedIn = await getLinkedInSnapshot();
-  const visit = recordVisit();
+  const visit = await recordVisit();
   const distinctId = randomUUID();
   capture(distinctId, "visit", { count: visit.count });
 

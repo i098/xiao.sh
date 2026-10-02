@@ -5,13 +5,8 @@ It is one [OpenTUI](https://github.com/anomalyco/opentui) + React application th
 Both surfaces run the exact same `tui/app.tsx` tree.
 Over SSH it is rendered server-side and streamed down the channel; in the browser the same React tree is bundled to DOM primitives and rendered client-side, fetching data over `/api/*`.
 
-Try the live one:
-
-```bash
-ssh tui.xiao.sh          # the portfolio, in your terminal
-```
-
-Or open [https://xiao.sh](https://xiao.sh) and you land straight in the same TUI.
+Try the live one: open [https://xiao.sh](https://xiao.sh) and you land straight in the TUI.
+The public site runs on Cloudflare Workers, which carry HTTP only, so it is browser-only; the SSH surface runs when you self-host it (`bun run start` / `bun run ssh`).
 
 ## Features
 
@@ -27,7 +22,7 @@ Or open [https://xiao.sh](https://xiao.sh) and you land straight in the same TUI
   In the browser you can play a short track preview through the tab and watch an audio-reactive volume bar; over SSH the same widget and controls render, but no audio can reach the client.
 - A live GitHub pulse on the home screen (commits, contributions, stars, last push).
 - Live presence: a count of everyone currently connected, across both SSH and web sessions.
-- A visitor counter with a 14-day sparkline, persisted to disk.
+- A visitor counter with a 14-day sparkline, persisted to `.data/` locally or to KV on Cloudflare.
 - Saved chats in the browser and standalone TUI; persistence is disabled on public SSH because visitors have no identity boundary.
 - Hard SSH connection/session caps, bounded terminal sizes and chat input, plus authentication, idle, and absolute timeouts.
 - LinkedIn profile scraping (via Playwright) that feeds the About screen and the AI's context, with a baked-in snapshot as a fallback.
@@ -94,20 +89,22 @@ See `.env.example` for the full annotated list.
   It sets the SEO/GEO URLs and the same-origin allowlist for the mutating `/api/*` routes.
 - `NODE_ENV=production` caches the minified browser bundle instead of rebuilding it per request.
 
-Runtime state is written to `.data/` (gitignored): the visit counter (`visits.json`), aggregated chat questions (`questions.json`), saved chats (`sessions/`), and a stable ssh host key (`ssh-host-key`).
+Runtime state goes through `src/lib/store.ts`.
+Locally it is written to `.data/` (gitignored): the visit counter (`visits.json`), aggregated chat questions (`questions.json`), Spotify history (`spotify.json`), saved chats (`sessions/`), and a stable ssh host key (`ssh-host-key`).
+On Cloudflare the same keys live in the `DATA` KV namespace (see [Cloudflare](#cloudflare)).
 
 ## Project layout
 
 - `tui/` - the app itself.
   `app.tsx` holds every screen, keybinding, and the koi-pond composite; `main.tsx` is the standalone entry; `session.tsx` renders one session onto any transport (with mount throttling and presence bookkeeping); `music.tsx` and `ui.tsx` are the widgets and shared styling.
 - `server/` - the entry points.
-  `index.ts` runs both surfaces plus the LinkedIn refresh loop; `web.ts` is the Bun HTTP server (browser bundle, `/api/*` data routes, SEO routes); `ssh.ts` is the ssh2 server (session caps, reaping); `seo.ts` builds the meta, JSON-LD, and text files.
+  `index.ts` runs both surfaces plus the LinkedIn refresh loop; `routes.ts` holds the HTML shell, `/api/*` data routes, and SEO routes shared by both web hosts; `web.ts` is the Bun HTTP server; `worker.ts` is the Cloudflare Worker; `bundle.ts` builds the browser bundle; `ssh.ts` is the ssh2 server (session caps, reaping); `seo.ts` builds the meta, JSON-LD, and text files.
 - `web/` - the browser build seams.
   `main.ts` boots the DOM render; `dom/` holds the JSX-runtime and OpenTUI shims, cell metrics, the client-side pond, the volume channel, and fetch-based twins of the data libs.
-- `src/lib/` - shared data and logic used by both surfaces: `profile`, `projects`, `linkedin`, `ai`, `spotify`, `github`, `preview`, `visits`, `presence`, `analytics`, `sessions`, `questions`, `pond`, `symbols`.
+- `src/lib/` - shared data and logic used by both surfaces: `profile`, `projects`, `linkedin`, `ai`, `spotify`, `github`, `preview`, `visits`, `presence`, `analytics`, `sessions`, `questions`, `store`, `pond`, `symbols`.
 - `src/data/` - the baked-in LinkedIn snapshot (`linkedin-about.json`).
-- `scripts/` - the LinkedIn sync/session/asset scripts and the Spotify auth helper.
-- `fly/` and `k8s/` - deployment config for the author's setup; `Dockerfile` builds the app image.
+- `scripts/` - the LinkedIn sync/session/asset scripts, the Spotify auth helper, and `data-to-kv.sh` (copies a `.data` directory into KV).
+- `wrangler.jsonc` - the Cloudflare Worker deploy; `fly/`, `k8s/`, and `Dockerfile` - the older self-hosted setup.
 
 ## How it works
 
@@ -123,8 +120,21 @@ Both transports render the same `tui/app.tsx` and share everything in `src/lib`,
   The pond runs on the same grid, so it needs no server round-trip.
 - One server process holds the shared live-presence count and the session caps for both surfaces.
 
-In production, the browser side is exposed through an in-cluster cloudflared tunnel, and the SSH side is fronted by a fly.io edge running frp: an `frpc` client inside the k3s cluster dials out and reverse-tunnels the ssh port to the fly relay, so `ssh tui.xiao.sh` reaches the same pod.
-See `fly/README.md` for the certificate/token setup and `fly/` and `k8s/` for the manifests.
+### Cloudflare
+
+Production (`https://xiao.sh`) is a Cloudflare Worker (`server/worker.ts`, configured by `wrangler.jsonc`) serving the browser surface only.
+SSH is not available there: Workers accept HTTP, not raw TCP.
+
+- `bun server/bundle.ts` (run automatically by `wrangler deploy`) writes the minified `dist/app.js` and favicon, served as static assets.
+- Every other request runs `server/routes.ts` in the Worker; runtime state is the `DATA` KV namespace, one key per `.data`-relative file, so `scripts/data-to-kv.sh <dir>` copies a `.data` directory in and verifies each key by sha256 (the ssh host key is skipped).
+- Secrets (`OPENROUTER_API_KEY`, `SPOTIFY_*`, `POSTHOG_*`, `GITHUB_TOKEN`) are Worker secrets set with `wrangler secret put` or `wrangler secret bulk`; they are never in the repo or the bundle.
+- Live presence and the chat rate limit are per Worker isolate, and KV is eventually consistent, so the visit counter can drop an increment under concurrent visits.
+
+```bash
+CLOUDFLARE_ACCOUNT_ID=... bun run deploy:cf   # plus CLOUDFLARE_API_TOKEN, or CLOUDFLARE_API_KEY + CLOUDFLARE_EMAIL
+```
+
+The older self-hosted setup exposed the browser side through a cloudflared tunnel and fronted SSH with a fly.io edge running frp (`ssh tui.xiao.sh`); see `fly/README.md` and `fly/` and `k8s/` for the manifests.
 
 ## Editing content and data
 

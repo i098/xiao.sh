@@ -6,15 +6,8 @@ import { projects } from "@/lib/projects";
 
 const ORIGIN = (process.env.PUBLIC_ORIGIN ?? "https://xiao.sh").replace(/\/$/, "");
 const PAGE_TITLE = `${profile.name} — ${profile.role}`;
-const DESC = `${profile.name} — ${profile.role}. CS @ ${profile.education}, based in ${profile.location}. Searchable projects, hackathon wins, and an AI you can ask about me — over SSH (ssh ${hostFromOrigin()}) or in the browser.`;
+const DESC = `${profile.name} — ${profile.role}. CS @ ${profile.education}, based in ${profile.location}. Searchable projects, hackathon wins, and an AI you can ask about me — in a terminal UI right in the browser.`;
 
-function hostFromOrigin() {
-  try {
-    return new URL(ORIGIN).host;
-  } catch {
-    return "xiao.sh";
-  }
-}
 function esc(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
@@ -95,7 +88,7 @@ export function llmsTxt() {
     "",
     `> ${profile.role}. CS @ ${profile.education}, ${profile.location}.`,
     "",
-    `${profile.name} is a CS student and builder. This site is a terminal UI — reachable in the browser or via \`ssh ${hostFromOrigin()}\`. Ask its built-in AI about projects, hackathon wins, and stack.`,
+    `${profile.name} is a CS student and builder. This site is a terminal UI that runs in the browser. Ask its built-in AI about projects, hackathon wins, and stack.`,
     "",
     "## Projects",
     ...projects.map((p) => `- [${p.title}](${p.githubUrl}): ${p.summary}${p.highlight ? ` (${p.highlight})` : ""}`),

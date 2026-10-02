@@ -1,8 +1,7 @@
 // Spotify now-playing for the TUI (server-side). Ports the web app's API route logic and
 // adds a recently-played fallback so the home screen always has something to show.
 // Reads SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET / SPOTIFY_REFRESH_TOKEN; no-op without them.
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import path from "node:path";
+import { get, put } from "@/lib/store";
 
 const TOKEN_URL = "https://accounts.spotify.com/api/token";
 const NOW_URL = "https://api.spotify.com/v1/me/player/currently-playing";
@@ -102,29 +101,32 @@ let recentRetryAt = 0;
 // tracks we watched playing, newest first — history fallback while recently-played is rate-limited
 let observed: SpotifyEntry[] = [];
 
-// history survives restarts/redeploys: persisted to .data (the prod PVC, same as visits.json).
-// Without this every rollout blanked RECENTLY PLAYED until the rate-limited API recovered.
-const HISTORY_FILE = path.join(process.cwd(), ".data", "spotify.json");
-try {
-  const p = JSON.parse(readFileSync(HISTORY_FILE, "utf8")) as {
-    lastRecent?: SpotifyEntry[];
-    recentFetchedAt?: number;
-    recentRetryAt?: number;
-    observed?: SpotifyEntry[];
-  };
-  lastRecent = p.lastRecent ?? [];
-  recentFetchedAt = p.recentFetchedAt ?? 0;
-  recentRetryAt = p.recentRetryAt ?? 0;
-  observed = p.observed ?? [];
-} catch {
-  // first boot — nothing persisted yet
-}
-function persistHistory() {
+// history survives restarts/redeploys: persisted via @/lib/store (.data locally, KV on
+// Cloudflare). Without this every rollout blanked RECENTLY PLAYED until the rate-limited
+// API recovered. Loaded lazily on first fetch: Workers forbid I/O at module scope.
+const HISTORY_KEY = "spotify.json";
+let historyLoaded: Promise<void> | null = null;
+async function loadHistory() {
   try {
-    mkdirSync(path.dirname(HISTORY_FILE), { recursive: true });
-    writeFileSync(HISTORY_FILE, JSON.stringify({ lastRecent, recentFetchedAt, recentRetryAt, observed }));
+    const p = JSON.parse((await get(HISTORY_KEY)) ?? "{}") as {
+      lastRecent?: SpotifyEntry[];
+      recentFetchedAt?: number;
+      recentRetryAt?: number;
+      observed?: SpotifyEntry[];
+    };
+    lastRecent = p.lastRecent ?? [];
+    recentFetchedAt = p.recentFetchedAt ?? 0;
+    recentRetryAt = p.recentRetryAt ?? 0;
+    observed = p.observed ?? [];
   } catch {
-    // disk hiccup — in-memory copy still serves
+    // first boot — nothing persisted yet
+  }
+}
+async function persistHistory() {
+  try {
+    await put(HISTORY_KEY, JSON.stringify({ lastRecent, recentFetchedAt, recentRetryAt, observed }));
+  } catch {
+    // storage hiccup — in-memory copy still serves
   }
 }
 
@@ -177,6 +179,7 @@ export async function getSpotify(): Promise<SpotifyState> {
 }
 
 async function fetchSpotify(): Promise<SpotifyState> {
+  await (historyLoaded ??= loadHistory());
   try {
     const token = await getAccessToken();
     if (!token) return EMPTY(false);
@@ -199,7 +202,7 @@ async function fetchSpotify(): Promise<SpotifyState> {
 
     if (current && observed[0]?.track.name !== current.name) {
       observed = [{ track: current, playedAt: new Date().toISOString() }, ...observed].slice(0, 8);
-      persistHistory();
+      await persistHistory();
     }
 
     // queue only matters while playing; recent is throttled — most polls are a single request
@@ -215,11 +218,11 @@ async function fetchSpotify(): Promise<SpotifyState> {
         .filter((it) => it?.track)
         .map((it) => ({ track: trackFrom(it.track), playedAt: typeof it.played_at === "string" ? it.played_at : null }));
       recentFetchedAt = Date.now();
-      persistHistory();
+      await persistHistory();
     } else if (recRes?.status === 429) {
       const after = Number(recRes.headers.get("retry-after")) || 60;
       recentRetryAt = Date.now() + Math.min(after, 3600) * 1000;
-      persistHistory();
+      await persistHistory();
     }
     const recent = mergedRecent();
 

@@ -51,3 +51,7 @@ next-env.d.ts
 
 # playwright linkedin session (auth cookies — never commit)
 linkedin-session.json
+
+# cloudflare worker build output + wrangler local state
+/dist
+/.wrangler
