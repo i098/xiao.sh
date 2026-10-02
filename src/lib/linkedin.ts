@@ -2,6 +2,9 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { profile } from "@/lib/profile";
 import { projects } from "@/lib/projects";
+// Bundled copy of the snapshot: the Worker has no disk, and the Bun server falls back to it
+// when the file read fails. The live file read still wins so the dev sync refreshes in place.
+import bundledSnapshot from "@/data/linkedin-about.json";
 
 export type LinkedInPost = {
   url: string;
@@ -332,7 +335,7 @@ export async function getLinkedInSnapshot() {
   if (inFlight) return inFlight;
 
   inFlight = loadLinkedInSnapshotFile()
-    .catch(() => fallbackSnapshot())
+    .catch(() => normalizeSnapshot(bundledSnapshot))
     .then((data) => {
       cacheEntry = {
         data,

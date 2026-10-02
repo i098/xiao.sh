@@ -8,7 +8,7 @@ import App from "./app";
 
 // Standalone: run the TUI directly in the current terminal (`bun tui/main.tsx`).
 const linkedIn = await getLinkedInSnapshot();
-const visit = recordVisit();
+const visit = await recordVisit();
 const distinctId = randomUUID();
 capture(distinctId, "visit", { count: visit.count });
 const renderer = await createCliRenderer({ exitOnCtrlC: false, useMouse: true, enableMouseMovement: true, targetFps: 60 });

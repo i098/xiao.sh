@@ -1,0 +1,18 @@
+// Cloudflare deploy of the browser product: `bun run deploy:cf` (see README "Cloudflare").
+// Account comes from CLOUDFLARE_ACCOUNT_ID in the environment; secrets via `wrangler secret`.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "xiao-sh",
+  "main": "server/worker.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "build": { "command": "bun server/bundle.ts" },
+  // dist/app.js + favicon, served before the Worker runs; every other path reaches the Worker
+  "assets": { "directory": "dist" },
+  "workers_dev": true,
+  "routes": [{ "pattern": "xiao.sh", "custom_domain": true }],
+  // .data on Cloudflare: one KV entry per .data-relative file (visits.json, spotify.json, ...)
+  "kv_namespaces": [{ "binding": "DATA", "id": "66790071a1af402fbe5045014f12d3ae" }],
+  "vars": { "NODE_ENV": "production", "PUBLIC_ORIGIN": "https://xiao.sh" },
+  "observability": { "enabled": true }
+}

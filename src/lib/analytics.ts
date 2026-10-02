@@ -15,11 +15,13 @@ function get(): PostHog | null {
   return client;
 }
 
-export function capture(distinctId: string, event: string, properties?: Record<string, unknown>): void {
+// Resolves once the event is sent, so a Worker can hand it to ctx.waitUntil (an un-awaited
+// send is cancelled when the response ends). Never rejects.
+export async function capture(distinctId: string, event: string, properties?: Record<string, unknown>): Promise<void> {
   const c = get();
   if (!c) return;
   try {
-    c.capture({ distinctId, event, properties });
+    await c.captureImmediate({ distinctId, event, properties });
   } catch {
     // analytics must never break the app
   }
