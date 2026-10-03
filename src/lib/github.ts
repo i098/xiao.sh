@@ -65,24 +65,22 @@ export async function getGitHub(): Promise<GitHubPulse | null> {
       const a = await r.json();
       return Array.isArray(a) ? (a as RawRepo[]) : undefined;
     }),
-    cache
-      ? cache.data
-      : get(KEY)
-          .then((s): GitHubPulse | null => {
-            const p = JSON.parse(s ?? "null");
-            if (!p || typeof p !== "object") return null;
-            const num = (v: unknown) => (typeof v === "number" ? v : undefined);
-            const str = (v: unknown) => (typeof v === "string" ? v : null);
-            return {
-              login,
-              commits: num(p.commits),
-              contributions: num(p.contributions),
-              stars: num(p.stars),
-              lastPushName: str(p.lastPushName),
-              lastPushAt: str(p.lastPushAt),
-            };
-          })
-          .catch(() => null),
+    get(KEY)
+      .then((s): GitHubPulse | null => {
+        const p = JSON.parse(s ?? "null");
+        if (!p || typeof p !== "object") return null;
+        const num = (v: unknown) => (typeof v === "number" ? v : undefined);
+        const str = (v: unknown) => (typeof v === "string" ? v : null);
+        return {
+          login,
+          commits: num(p.commits),
+          contributions: num(p.contributions),
+          stars: num(p.stars),
+          lastPushName: str(p.lastPushName),
+          lastPushAt: str(p.lastPushAt),
+        };
+      })
+      .catch(() => null),
   ]);
 
   const data: GitHubPulse = { ...stored, login };

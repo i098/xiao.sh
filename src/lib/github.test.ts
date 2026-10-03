@@ -67,3 +67,22 @@ test("last good pulse survives an isolate recycle via the store", async () => {
   const corrupt = await import("./github?recycled-corrupt");
   expect(await corrupt.getGitHub()).toBeNull();
 });
+
+test("a stale isolate does not erase fields another isolate stored", async () => {
+  kv.clear();
+  commitsOk = false;
+  reposOk = false;
+  pageHtml = "";
+  const a = await import("./github?iso-a");
+  expect(await a.getGitHub()).toBeNull(); // A caches null
+
+  kv.set("github.json", JSON.stringify({ login: "x", commits: 2621, contributions: 9459, stars: 69 })); // B writes
+  commitsOk = true;
+  const refreshed = await (async () => {
+    now += 11 * 60 * 1000;
+    setSystemTime(now);
+    return a.getGitHub();
+  })(); // only commits succeeds
+  expect(refreshed).toMatchObject({ commits: 2621, contributions: 9459, stars: 69 });
+  expect(JSON.parse(kv.get("github.json")!)).toMatchObject({ contributions: 9459, stars: 69 });
+});
