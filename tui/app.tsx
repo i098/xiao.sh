@@ -151,9 +151,9 @@ const LOCATIONS = ["Boston, MA", "SF, CA", "Sugar Land, TX"];
 
 // The one link primitive. <a href> emits OSC 8 when the terminal supports it (clickable),
 // otherwise renders as plain underlined accent text — never garbage.
-function LinkLine({ label, href, text, bg }: { label: string; href: string; text: string; bg?: string }) {
+function LinkLine({ label, href, text, bg, wrapMode }: { label: string; href: string; text: string; bg?: string; wrapMode?: "none" }) {
   return (
-    <text bg={bg ?? PANEL}>
+    <text bg={bg ?? PANEL} wrapMode={wrapMode}>
       <span fg={MUTED}>{label.padEnd(10)}</span>
       <a href={href} fg={ACCENT} attributes={TextAttributes.UNDERLINE}>
         {text}
@@ -566,7 +566,7 @@ export default function App({
             />
           )}
         </box>
-        <Footer screen={screen} chatActive={chatActive} narrow={narrow} onNav={go} />
+        <Footer screen={screen} chatActive={chatActive} onNav={go} />
       </box>
       {/* the pond paints under every cell; this pass keeps it out of each line of copy */}
       {pond && <CopyClearance cellsRef={pondCells} width={termW} height={termH} />}
@@ -627,14 +627,14 @@ function NavTab({ item, active, onNav }: { item: { key: string; screen: Screen }
 function Footer({
   screen,
   chatActive,
-  narrow,
   onNav,
 }: {
   screen: Screen;
   chatActive: boolean;
-  narrow: boolean;
   onNav: (s: Screen) => void;
 }) {
+  // nav tabs (~38) + the longest hint (34) + padding (4): below that the hint wraps onto the tabs
+  const showHint = useTerminalDimensions().width >= 76;
   const hint = chatActive
     ? "Enter send · Esc back"
     : screen === "projects"
@@ -651,7 +651,7 @@ function Footer({
             <NavTab key={n.key} item={n} active={n.screen === screen} onNav={onNav} />
           ))}
         </box>
-        {!narrow && <text bg={PANEL} fg={MUTED}>{hint}</text>}
+        {showHint && <text bg={PANEL} fg={MUTED}>{hint}</text>}
       </box>
     </box>
   );
@@ -1155,9 +1155,13 @@ function ProjectIndex({ groups, selected, width, rows, onSelect }: { groups: Gro
   );
 }
 
-function ProjectDossier({ p, w, narrow }: { p: Project; w: number; narrow: boolean }) {
+function ProjectDossier({ p, w, narrow, tight }: { p: Project; w: number; narrow: boolean; tight: boolean }) {
   const st = STATUS_MARK[p.status];
   const col2 = narrow || w < 52 ? 14 : 20;
+  // short terminal: drop the blank spacer rows, or yoga shrinks the text rows onto each other
+  const gap = tight ? 0 : 1;
+  // 64-79 cols: the dossier is under 40 cells; clip rows at the screen edge instead of wrapping them
+  const wm = !narrow && w < 40 ? "none" : undefined;
   return (
     <box style={{ flexGrow: 1, flexDirection: "column", paddingLeft: 2, paddingRight: 2, paddingTop: 1 }}>
       {p.award ? (
@@ -1170,11 +1174,11 @@ function ProjectDossier({ p, w, narrow }: { p: Project; w: number; narrow: boole
           {ORIGIN_LABEL[p.origin]}
         </text>
       )}
-      <text bg={PANEL}>
+      <text bg={PANEL} wrapMode={wm}>
         <strong fg={INK}>{p.title}</strong>
         <span fg={FAINT}>{`   ${p.repo.split("/")[0]}/`}</span>
       </text>
-      <box style={{ height: 1 }} />
+      <box style={{ height: gap }} />
       {wrapText(p.summary, w)
         .slice(0, 3)
         .map((line, i) => (
@@ -1182,32 +1186,32 @@ function ProjectDossier({ p, w, narrow }: { p: Project; w: number; narrow: boole
             {line}
           </text>
         ))}
-      <box style={{ height: 1 }} />
+      <box style={{ height: gap }} />
       <Rule w={w} />
-      <box style={{ height: 1 }} />
-      <text bg={PANEL}>
+      <box style={{ height: gap }} />
+      <text bg={PANEL} wrapMode={wm}>
         <span fg={MUTED}>{"category  "}</span>
         <span fg={INK}>{p.category.padEnd(col2)}</span>
         <span fg={MUTED}>{"year  "}</span>
         <span fg={INK}>{String(p.year)}</span>
       </text>
-      <text bg={PANEL}>
+      <text bg={PANEL} wrapMode={wm}>
         <span fg={MUTED}>{"role      "}</span>
         <span fg={INK}>{`${p.role} · ${Math.round(p.share * 100)}%`.padEnd(col2)}</span>
         <span fg={MUTED}>{"now   "}</span>
         <span fg={st.col}>{`${st.ch} `}</span>
         <span fg={INK}>{p.status}</span>
       </text>
-      <text bg={PANEL}>
+      <text bg={PANEL} wrapMode={wm}>
         <span fg={MUTED}>{"stack     "}</span>
         {p.stack.slice(0, narrow ? 4 : 6).map((t) => {
           const { tag, col } = techTag(t);
           return <span key={t} fg={col}>{`● ${tag}   `}</span>;
         })}
       </text>
-      <box style={{ height: 1 }} />
+      <box style={{ height: gap }} />
       <LangBar p={p} w={w} />
-      <text bg={PANEL}>
+      <text bg={PANEL} wrapMode={wm}>
         {p.langs.slice(0, narrow ? 2 : 4).map((l) => (
           <span key={l.name}>
             <span fg={techTag(l.name).col}>{"● "}</span>
@@ -1216,9 +1220,9 @@ function ProjectDossier({ p, w, narrow }: { p: Project; w: number; narrow: boole
           </span>
         ))}
       </text>
-      <box style={{ height: 1 }} />
-      <LinkLine label="GitHub" href={p.githubUrl} text={p.githubUrl} />
-      {p.eventUrl && <LinkLine label="Event" href={p.eventUrl} text={p.eventUrl.split("?")[0]} />}
+      <box style={{ height: gap }} />
+      <LinkLine label="GitHub" href={p.githubUrl} text={p.githubUrl} wrapMode={wm} />
+      {p.eventUrl && <LinkLine label="Event" href={p.eventUrl} text={p.eventUrl.split("?")[0]} wrapMode={wm} />}
     </box>
   );
 }
@@ -1238,17 +1242,17 @@ function Projects({ list, selected, onSelect }: { list: Project[]; selected: num
     return (
       <box style={{ flexDirection: "column", flexGrow: 1, paddingTop: 1 }}>
         <ProjectIndex groups={groups} selected={sel} width={width} rows={9} onSelect={onSelect} />
-        <ProjectDossier p={p} w={width - 4} narrow />
+        <ProjectDossier p={p} w={width - 4} narrow tight={false} />
       </box>
     );
   }
   return (
     <box style={{ flexDirection: "row", flexGrow: 1 }}>
-      <box style={{ flexDirection: "column", paddingTop: 1 }}>
+      <box style={{ flexDirection: "column", paddingTop: 1, flexShrink: 0 }}>
         <ProjectIndex groups={groups} selected={sel} width={INDEX_W} rows={bodyRows - 1} onSelect={onSelect} />
       </box>
       <VRule rows={bodyRows} />
-      <ProjectDossier p={p} w={Math.min(88, width - INDEX_W - 6)} narrow={false} />
+      <ProjectDossier p={p} w={Math.min(88, width - INDEX_W - 6)} narrow={false} tight={bodyRows < 22} />
     </box>
   );
 }
