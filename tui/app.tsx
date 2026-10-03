@@ -1161,7 +1161,8 @@ function ProjectDossier({ p, w, narrow, tight }: { p: Project; w: number; narrow
   // short terminal: drop the blank spacer rows, or yoga shrinks the text rows onto each other
   const gap = tight ? 0 : 1;
   // 64-79 cols: the dossier is under 40 cells; clip rows at the screen edge instead of wrapping them
-  const wm = !narrow && w < 40 ? "none" : undefined;
+  // stacked on a short screen: clip instead of wrapping, or a wrapped row overprints the next
+  const wm = (narrow ? tight : w < 40) ? "none" : undefined;
   return (
     <box style={{ flexGrow: 1, flexDirection: "column", paddingLeft: 2, paddingRight: 2, paddingTop: 1 }}>
       {p.award ? (
@@ -1180,7 +1181,7 @@ function ProjectDossier({ p, w, narrow, tight }: { p: Project; w: number; narrow
       </text>
       <box style={{ height: gap }} />
       {wrapText(p.summary, w)
-        .slice(0, 3)
+        .slice(0, narrow && tight ? 2 : 3)
         .map((line, i) => (
           <text key={i} bg={PANEL} fg={MUTED}>
             {line}
@@ -1239,10 +1240,14 @@ function Projects({ list, selected, onSelect }: { list: Project[]; selected: num
   const sel = Math.min(selected, order.length - 1);
   const p = order[sel];
   if (narrow) {
+    // rows left under the header/footer chrome and the top pad; the full dossier is 20 rows, the
+    // tight one (no spacers, 2-line summary) 13. Overflow makes yoga shrink text rows onto each other.
+    const avail = height - 7;
+    const tight = avail < 25;
     return (
       <box style={{ flexDirection: "column", flexGrow: 1, paddingTop: 1 }}>
-        <ProjectIndex groups={groups} selected={sel} width={width} rows={9} onSelect={onSelect} />
-        <ProjectDossier p={p} w={width - 4} narrow tight={false} />
+        <ProjectIndex groups={groups} selected={sel} width={width} rows={Math.max(3, Math.min(9, avail - (tight ? 13 : 20)))} onSelect={onSelect} />
+        <ProjectDossier p={p} w={width - 4} narrow tight={tight} />
       </box>
     );
   }
