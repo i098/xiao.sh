@@ -44,7 +44,9 @@ export async function getGitHub(): Promise<GitHubPulse | null> {
       fetch(`https://github.com/users/${login}/contributions`, { headers: { "User-Agent": "xiao.sh-tui" } }),
       fetch(`https://api.github.com/users/${login}/repos?per_page=100&sort=pushed`, { headers }),
     ]);
-    if (!cRes.ok && !gRes.ok) return cache?.data ?? null;
+    // stars and last push come only from the repos call: a failed (e.g. rate-limited) repos
+    // response must not be reported, or cached for TTL, as 0 stars
+    if (!rRes.ok || (!cRes.ok && !gRes.ok)) return cache?.data ?? null;
     const commits = cRes.ok ? ((await cRes.json()) as { total_count?: number }).total_count ?? 0 : 0;
     let contributions = 0;
     if (gRes.ok) {
@@ -52,7 +54,7 @@ export async function getGitHub(): Promise<GitHubPulse | null> {
       const m = html.match(/js-contribution-activity-description[^>]*>\s*([\d,]+)/);
       if (m) contributions = Number(m[1].replace(/,/g, ""));
     }
-    const repos = rRes.ok ? ((await rRes.json()) as RawRepo[]) : [];
+    const repos = (await rRes.json()) as RawRepo[];
     const stars = repos.reduce((s, r) => s + (r.stargazers_count ?? 0), 0);
     const newest = repos.find((r) => !r.fork) ?? repos[0];
     const data: GitHubPulse = {
