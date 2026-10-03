@@ -78,7 +78,7 @@ See `.env.example` for the full annotated list.
   Without them the widget stays empty.
   Get a refresh token with `bun run spotify:auth`.
 - `GITHUB_TOKEN` raises the unauthenticated GitHub API rate limit used by the home-screen pulse.
-  Without it the pulse still works, just cached harder and occasionally rate-limited.
+  Without it the pulse runs unauthenticated (60 requests/hour per IP, shared across tenants on Cloudflare's egress IPs); while rate-limited the GitHub line shows the last good value or `…`, never a made-up 0.
 - `LINKEDIN_COOKIE_LI_AT`, `LINKEDIN_COOKIE_JSESSIONID`, `LINKEDIN_STORAGE_STATE_PATH` enable full LinkedIn profile scraping.
   Without them the sync falls back to public/limited metadata, or to the baked-in snapshot.
 - `POSTHOG_API_KEY` (with optional `POSTHOG_HOST`) enables server-side analytics (visit and nav events).
@@ -90,7 +90,7 @@ See `.env.example` for the full annotated list.
 - `NODE_ENV=production` caches the minified browser bundle instead of rebuilding it per request.
 
 Runtime state goes through `src/lib/store.ts`.
-Locally it is written to `.data/` (gitignored): the visit counter (`visits.json`), aggregated chat questions (`questions.json`), Spotify history (`spotify.json`), saved chats (`sessions/`), and a stable ssh host key (`ssh-host-key`).
+Locally it is written to `.data/` (gitignored): the visit counter (`visits.json`), aggregated chat questions (`questions.json`), Spotify history (`spotify.json`), the last good GitHub pulse (`github.json`), saved chats (`sessions/`), and a stable ssh host key (`ssh-host-key`).
 On Cloudflare the same keys live in the `DATA` KV namespace (see [Cloudflare](#cloudflare)).
 
 ## Project layout

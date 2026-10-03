@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react";
 import { RGBA, TextAttributes, type OptimizedBuffer } from "@opentui/core";
 import { profile } from "@/lib/profile";
@@ -777,23 +777,33 @@ function VisitorHead({ total }: { total: number }) {
 // wide separator: the stats row spans the whole music-widget box (its width feeds
 // controlsWidth), so « ▶ » and the ★ column frame the track list underneath
 const GH_SEP = "    ·    ";
+// fields a failed GitHub call left absent are skipped, never shown as 0
+function ghParts(g: GitHubPulse): { text: string; fg: string; label?: string }[] {
+  const parts: { text: string; fg: string; label?: string }[] = [];
+  if (g.commits !== undefined) parts.push({ text: compactNum(g.commits), fg: INK, label: " commits" });
+  if (g.contributions !== undefined) parts.push({ text: compactNum(g.contributions), fg: INK, label: " contributions" });
+  if (g.stars !== undefined) parts.push({ text: `${compactNum(g.stars)}★`, fg: ACCENT });
+  return parts;
+}
 function ghStatsWidth(g: GitHubPulse): number {
-  return `${compactNum(g.commits)} commits${GH_SEP}${compactNum(g.contributions)} contributions${GH_SEP}${compactNum(g.stars)}★`.length;
+  return ghParts(g)
+    .map((p) => p.text + (p.label ?? ""))
+    .join(GH_SEP).length;
 }
 
-// GitHub pulse: followers · repos · stars + last push
+// GitHub pulse: commits · contributions · stars + last push
 function GitHubPulse({ g }: { g: GitHubPulse | null }) {
   return (
     <Stat label="GITHUB" meta={g?.lastPushAt ? `pushed ${timeAgo(g.lastPushAt)}` : undefined}>
       {g ? (
         <text bg={PANEL}>
-          <span fg={INK}>{compactNum(g.commits)}</span>
-          <span fg={MUTED}>{" commits"}</span>
-          <span fg={FAINT}>{GH_SEP}</span>
-          <span fg={INK}>{compactNum(g.contributions)}</span>
-          <span fg={MUTED}>{" contributions"}</span>
-          <span fg={FAINT}>{GH_SEP}</span>
-          <span fg={ACCENT}>{`${compactNum(g.stars)}★`}</span>
+          {ghParts(g).map((p, i) => (
+            <Fragment key={p.text + (p.label ?? "")}>
+              {i > 0 && <span fg={FAINT}>{GH_SEP}</span>}
+              <span fg={p.fg}>{p.text}</span>
+              {p.label && <span fg={MUTED}>{p.label}</span>}
+            </Fragment>
+          ))}
         </text>
       ) : (
         <text bg={PANEL} fg={FAINT}>
