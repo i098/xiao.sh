@@ -1,5 +1,6 @@
 import { afterAll, expect, setSystemTime, test } from "bun:test";
 import { getGitHub } from "./github";
+import type * as GitHubModule from "./github";
 import { useStore } from "./store";
 
 // GitHub fully mocked: a failed call or missed parse must never read as 0 for its field.
@@ -34,6 +35,12 @@ const refetch = () => {
   return getGitHub();
 };
 
+// query suffix = new module instance; a non-literal specifier keeps tsc from resolving it
+const freshModule = (tag: string): Promise<typeof GitHubModule> => {
+  const specifier = `./github?${tag}`;
+  return import(specifier);
+};
+
 test("failed fields are omitted, then keep their last good value, never 0", async () => {
   reposOk = false;
   const first = await refetch(); // rate-limited repos, nothing stored yet
@@ -55,16 +62,16 @@ test("last good pulse survives an isolate recycle via the store", async () => {
   commitsOk = false;
   reposOk = false;
   pageHtml = "";
-  const fresh = await import("./github?recycled"); // query suffix = new module instance
+  const fresh = await freshModule("recycled");
   expect(fresh.getGitHub).not.toBe(getGitHub);
   expect(await fresh.getGitHub()).toMatchObject({ commits: 2621, contributions: 9459, stars: 69 });
 
   kv.clear(); // control: with the store empty the same fresh instance has nothing to fall back on
-  const empty = await import("./github?recycled-empty");
+  const empty = await freshModule("recycled-empty");
   expect(await empty.getGitHub()).toBeNull();
 
   kv.set("github.json", "{not json"); // corrupt store must not throw into render
-  const corrupt = await import("./github?recycled-corrupt");
+  const corrupt = await freshModule("recycled-corrupt");
   expect(await corrupt.getGitHub()).toBeNull();
 });
 
@@ -73,7 +80,7 @@ test("a stale isolate does not erase fields another isolate stored", async () =>
   commitsOk = false;
   reposOk = false;
   pageHtml = "";
-  const a = await import("./github?iso-a");
+  const a = await freshModule("iso-a");
   expect(await a.getGitHub()).toBeNull(); // A caches null
 
   kv.set("github.json", JSON.stringify({ login: "x", commits: 2621, contributions: 9459, stars: 69 })); // B writes
