@@ -187,7 +187,7 @@ const BOOT_LINES = [
   "$ ./xiao.sh --boot",
   "[ ok ] mount /home/jerry",
   "[ ok ] load profile.json",
-  "[ ok ] index projects (15)",
+  `[ ok ] index projects (${projects.length})`,
   "[ ok ] connect spotify",
   "[ ok ] start ai-search daemon",
   "[ ok ] render tui",
