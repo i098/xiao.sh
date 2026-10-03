@@ -49,8 +49,9 @@ export async function getGitHub(): Promise<GitHubPulse | null> {
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const [commits, contributions, repos, stored] = await Promise.all([
-    // total_count = all indexed public commits authored by the login
-    call(fetch(`https://api.github.com/search/commits?q=author:${login}&per_page=1`, { headers }), async (r) => {
+    // total_count = all indexed public commits authored by the login; is:public keeps a
+    // GITHUB_TOKEN from adding commits in private repos the token can see
+    call(fetch(`https://api.github.com/search/commits?q=author:${login}+is:public&per_page=1`, { headers }), async (r) => {
       const n = ((await r.json()) as { total_count?: number }).total_count;
       return typeof n === "number" ? n : undefined;
     }),
