@@ -93,7 +93,7 @@ See `.env.example` for the full annotated list.
 - `NODE_ENV=production` caches the minified browser bundle instead of rebuilding it per request.
 
 Runtime state goes through `src/lib/store.ts`.
-Locally it is written to `.data/` (gitignored): the visit counter (`visits.json`), aggregated chat questions (`questions.json`), Spotify history (`spotify.json`), the last good GitHub pulse (`github.json`), the daily project labels (`projects.json`, written by the Worker cron), saved chats (`sessions/`), and a stable ssh host key (`ssh-host-key`).
+Locally it is written to `.data/` (gitignored): the visit counter (`visits.json`), aggregated chat questions (`questions.json`), Spotify history (`spotify.json`), the last good GitHub pulse (`github.json`), saved chats (`sessions/`), and a stable ssh host key (`ssh-host-key`).
 On Cloudflare the same keys live in the `DATA` KV namespace (see [Cloudflare](#cloudflare)).
 
 ## Project layout
