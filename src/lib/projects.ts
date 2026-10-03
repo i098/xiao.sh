@@ -3,7 +3,9 @@
 // src/data/project-overrides.ts.
 //  - `projects`: the committed snapshot (`bun run sync:projects`), synchronous, first paint.
 //  - `getProjects()`: the daily cron's copy in the store (KV on the Worker) when present,
-//    else the snapshot. The browser gets the same list through /api/projects
+//    else the snapshot. The cron picks up new repos and their GitHub-derived labels; awards
+//    are matched against the bundled LinkedIn snapshot, so they update on snapshot sync + redeploy.
+//    The browser gets the same list through /api/projects
 //    (web/dom/libs/projects.ts), because this file is compiled into the static /app.js.
 import snapshot from "@/data/projects.json";
 import { PROJECT_OVERRIDES, PROJECT_SOURCES } from "@/data/project-overrides";

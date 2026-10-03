@@ -2,7 +2,8 @@
 // favicon are Workers Static Assets built by server/bundle.ts; everything else runs the
 // shared routes with .data backed by the DATA KV namespace. No SSH: Workers carry HTTP only.
 // The daily cron (triggers.crons) re-derives the project labels into KV; /api/projects
-// serves that copy, so fresh labels reach visitors with no rebuild or redeploy.
+// serves that copy, so new repos and their GitHub-derived labels reach visitors with no
+// rebuild or redeploy. Awards come from the bundled LinkedIn snapshot (redeploy to update).
 import { handle } from "./routes";
 import { useStore, type Store } from "@/lib/store";
 import { refreshProjects } from "@/lib/projects";

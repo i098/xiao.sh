@@ -1157,7 +1157,7 @@ function ProjectIndex({ groups, selected, width, rows, onSelect }: { groups: Gro
 
 function ProjectDossier({ p, w, narrow }: { p: Project; w: number; narrow: boolean }) {
   const st = STATUS_MARK[p.status];
-  const col2 = narrow ? 14 : 20;
+  const col2 = narrow || w < 52 ? 14 : 20;
   return (
     <box style={{ flexGrow: 1, flexDirection: "column", paddingLeft: 2, paddingRight: 2, paddingTop: 1 }}>
       {p.award ? (
@@ -1336,6 +1336,7 @@ function About({ linkedIn, list }: { linkedIn: LinkedInSnapshot; list: Project[]
   const tagline = `${profile.role.toLowerCase()}  ·  ${profile.education.split(" ")[0].toLowerCase()}  ·  ${profile.location.split(",")[0].toLowerCase()}`;
   const short = (place: string) => (place.startsWith("1st") ? "1st" : place === "Track Prize" ? "prize" : place.split(" · ")[0]);
   const barW = narrow ? Math.max(8, width - 4 - 22) : 30;
+  const stacked = width < 148; // left 78 + gap 6 + right 62 + padding 2: below this the columns would clip
   const left = (
     <box style={{ flexDirection: "column", width: narrow ? undefined : 78, flexShrink: 0 }}>
       {name.map((row, i) => (
@@ -1382,7 +1383,7 @@ function About({ linkedIn, list }: { linkedIn: LinkedInSnapshot; list: Project[]
     </box>
   );
   const right = (
-    <box style={{ flexDirection: "column", paddingLeft: narrow ? 0 : 6, paddingTop: narrow ? 1 : 0 }}>
+    <box style={{ flexDirection: "column", paddingLeft: stacked ? 0 : 6, paddingTop: stacked ? 1 : 0 }}>
       <text bg={PANEL}>
         <span fg={MUTED}>WINS</span>
         <span fg={FAINT}>{`  ${wins.length}`}</span>
@@ -1409,7 +1410,7 @@ function About({ linkedIn, list }: { linkedIn: LinkedInSnapshot; list: Project[]
     </box>
   );
   return (
-    <box style={{ flexDirection: narrow ? "column" : "row", paddingLeft: 2, paddingTop: 1 }}>
+    <box style={{ flexDirection: stacked ? "column" : "row", paddingLeft: 2, paddingTop: 1 }}>
       {left}
       {right}
     </box>

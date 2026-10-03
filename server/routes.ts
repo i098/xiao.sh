@@ -193,6 +193,7 @@ export async function handle(req: Request, ip: string, waitUntil: (p: Promise<un
   if (url.pathname === "/sitemap.xml") return new Response(sitemapXml(), { headers: { "content-type": "application/xml; charset=utf-8" } });
   if (url.pathname === "/llms.txt") return new Response(llmsTxt(await getProjects()), { headers: { "content-type": "text/plain; charset=utf-8" } });
   // the SEO block lists the same projects the app shows, so it follows the cron too
-  const html = APP_HTML.replace("<!--seo-body-->", seoBody(await getProjects()));
+  const seo = seoBody(await getProjects());
+  const html = APP_HTML.replace("<!--seo-body-->", () => seo);
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
 }

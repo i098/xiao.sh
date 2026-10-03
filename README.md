@@ -16,7 +16,7 @@ The public site runs on Cloudflare Workers, which carry HTTP only, so it is brow
   Koi swim in from the edges, flee the cursor, and leave wave-sim ripples over a slowly drifting water texture (a cellular web of light, carried over from the Subliminal Labs hiring page; `src/lib/texture.ts`), which keeps clear of the header, the footer, and every line of copy.
   Over SSH it is drawn server-side straight into the renderer's cell buffers each frame; in the browser it runs client-side on the same text grid, so ripples react instantly and nothing is streamed for it.
 - A Projects screen that labels itself: every public repo of the author and his hackathon team org is pulled from GitHub, and title, summary, category, stack, award, status and role are derived by rule (`src/lib/project-labels.ts`), with wins matched from LinkedIn honours.
-  A daily cron re-derives the labels on Cloudflare, so new repos and wins appear with no redeploy.
+  A daily cron re-derives the labels on Cloudflare, so new repos and their GitHub-derived labels appear with no redeploy; awards come from the LinkedIn snapshot, so they update when that snapshot is synced and the Worker is redeployed.
 - An About screen built from the same data: the name banner, current build, last win, hackathon wins, and the languages he writes, weighted by his commits.
 - AI chat about the author, backed by [OpenRouter](https://openrouter.ai).
   It discovers free models, rotates through a pool, and retries across models on rate-limits and transient errors.
@@ -130,7 +130,7 @@ SSH is not available there: Workers accept HTTP, not raw TCP.
 
 - `bun server/bundle.ts` (run automatically by `wrangler deploy`) writes the minified `dist/app.js` and favicon, served as static assets.
 - Every other request runs `server/routes.ts` in the Worker; runtime state is the `DATA` KV namespace, one key per `.data`-relative file, so `scripts/data-to-kv.sh <dir>` copies a `.data` directory in and verifies each key by sha256 (the ssh host key is skipped).
-- A daily Cron Trigger (`triggers.crons` in `wrangler.jsonc`, `scheduled` in `server/worker.ts`) re-derives the project labels into the KV key `projects.json`. `/api/projects` serves that copy (the committed snapshot when it is absent), and the browser reads it through its twin `web/dom/libs/projects.ts`, so fresh labels reach visitors with no rebuild or redeploy. A failed run keeps the previous copy.
+- A daily Cron Trigger (`triggers.crons` in `wrangler.jsonc`, `scheduled` in `server/worker.ts`) re-derives the project labels into the KV key `projects.json`. `/api/projects` serves that copy (the committed snapshot when it is absent), and the browser reads it through its twin `web/dom/libs/projects.ts`, so new repos and their GitHub-derived labels reach visitors with no rebuild or redeploy. Awards are matched against the bundled LinkedIn snapshot, so a new win shows only after that snapshot is synced and the Worker is redeployed. A failed run keeps the previous copy.
 - Secrets (`OPENROUTER_API_KEY`, `SPOTIFY_*`, `POSTHOG_*`, `GITHUB_TOKEN`) are Worker secrets set with `wrangler secret put` or `wrangler secret bulk`; they are never in the repo or the bundle.
 - Live presence and the chat rate limit are per Worker isolate, and KV is eventually consistent, so the visit counter can drop an increment under concurrent visits.
 

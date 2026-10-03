@@ -356,7 +356,7 @@ export function deriveProjects({ raws, login, hackathonOrgs, honours, narrative,
       ? "contributor"
       : share >= 0.9 || people.length === 1
         ? "solo"
-        : !top || top.login.toLowerCase() === login.toLowerCase()
+        : (top ? top.login.toLowerCase() === login.toLowerCase() : share >= 0.5)
           ? "lead"
           : "team";
     const hit = awards[r.repo];
