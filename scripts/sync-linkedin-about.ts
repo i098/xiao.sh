@@ -1054,7 +1054,7 @@ function extractTechnologies(posts: RawPost[], extraSources: string[] = []) {
   ].join("\n");
 
   const found = TECHNOLOGY_PATTERNS.filter((item) => item.regex.test(corpus)).map((item) => item.label);
-  const projectTags = projects.flatMap((project) => project.tags);
+  const projectTags = projects.flatMap((project) => project.stack);
   const normalizedCorpus = corpus.toLowerCase();
   const matchedProjectTags = projectTags
     .filter((tag) => normalizedCorpus.includes(tag.toLowerCase()))

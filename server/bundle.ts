@@ -5,7 +5,7 @@
 // which also covers Bun.build's tsconfig-paths gap).
 // Used per request by the Bun server and once at deploy time for the Cloudflare Worker
 // (`bun server/bundle.ts` writes dist/, which wrangler.jsonc serves as static assets).
-const APP_TWINS = new Set(["spotify", "preview", "ai", "sessions", "presence", "github", "analytics", "questions"]);
+const APP_TWINS = new Set(["spotify", "preview", "ai", "sessions", "presence", "github", "analytics", "questions", "projects"]);
 
 export async function buildAppJs(dev: boolean): Promise<string> {
   const dom = new URL("../web/dom/", import.meta.url).pathname;

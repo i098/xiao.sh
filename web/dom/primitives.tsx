@@ -217,7 +217,7 @@ function Input({ style, focused, placeholder, value, onInput, onSubmit }: InputP
         }}
       />
       {!value && placeholder ? (
-        <span style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none", whiteSpace: "pre", color: "#2c3531" }}>{placeholder}</span>
+        <span style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none", whiteSpace: "pre", color: "#56645d" }}>{placeholder}</span>
       ) : null}
     </span>
   );

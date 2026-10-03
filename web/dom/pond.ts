@@ -19,6 +19,10 @@ import {
   DOWN_AMP,
 } from "../../src/lib/pond";
 import { FONT, getMetrics, onMetrics } from "./metrics";
+import { COPY_GAP, COPY_PAD, TEX_CH, TEX_HEX, fillTones, texturePhase } from "../../src/lib/texture";
+
+// header (pad + title + rule) and footer (rule + nav + pad) rows stay texture-free
+const CHROME_ROWS = 3;
 
 const WATER_CH = WATER_CP.map((c) => String.fromCharCode(c)); // index 0 = " " (calm)
 const FULL_CH = String.fromCharCode(CP_FULL);
@@ -40,6 +44,7 @@ export function startPond(app: HTMLElement): void {
   // cell-exclusivity mask: a terminal cell holds ONE glyph, so cells occupied by app
   // text (or painted boxes/inputs) are off-limits to the pond — koi swim under content
   // and reappear, never double-striking a cell. Rebuilt from live DOM geometry.
+  // 1 = inked by the app; 2 = the rest of a line of copy (see rebuildMask)
   let mask = new Uint8Array(0);
   let maskDirty = true;
   const root = document.getElementById("root");
@@ -58,8 +63,8 @@ export function startPond(app: HTMLElement): void {
       const y1 = Math.min(rows - 1, Math.floor((r.bottom - base.top - m.lh * 0.25) / m.lh));
       for (let y = y0; y <= y1; y += 1) for (let x = x0; x <= x1; x += 1) mask[y * cols + x] = 1;
     };
-    // only INKED glyphs claim cells. Spaces are pond-owned — the TUI renderer skips
-    // transparent-bg space cells entirely, so water shows between words there too.
+    // inked glyphs claim their cells here; the spaces inside each line of copy are claimed
+    // below, matching the TUI's CopyClearance pass
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     const range = document.createRange();
     const word = /\S+/g;
@@ -94,6 +99,20 @@ export function startPond(app: HTMLElement): void {
         (s.backgroundColor !== "" && s.backgroundColor !== "transparent") ||
         s.border !== "";
       if (paints) mark(el.getBoundingClientRect());
+    }
+    // each line of copy claims its whole run, as on the hiring page: the gaps between its
+    // words and padded columns (up to COPY_GAP cells; the left edge counts as copy, so the
+    // gutter before indented text stays clear too) and COPY_PAD cells either side, so no
+    // texture strand, ripple glyph or koi fin lands beside a word and reads as a typo or bullet
+    for (let y = 0; y < rows; y += 1) {
+      const row = y * cols;
+      let last = -1; // the left edge
+      for (let x = 0; x < cols; x += 1) {
+        if (mask[row + x] !== 1) continue;
+        for (let k = x - last - 1 <= COPY_GAP ? last + 1 : x; k < x; k += 1) mask[row + k] ||= 2;
+        for (let k = Math.max(0, x - COPY_PAD); k <= Math.min(cols - 1, x + COPY_PAD); k += 1) mask[row + k] ||= 2;
+        last = x;
+      }
     }
   }
   // any DOM change under #root can move text; re-measure on the next frame. Typing
@@ -158,6 +177,9 @@ export function startPond(app: HTMLElement): void {
   // rAF loop — pauses automatically in background tabs; PondSim clamps deltaMs at 100ms
   let last = performance.now();
   let frames = 0;
+  let tones = new Uint8Array(0);
+  let tonesAt = -1;
+  const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
   function frame(now: number) {
     sim.step(now - last);
     last = now;
@@ -173,6 +195,14 @@ export function startPond(app: HTMLElement): void {
     const W = sim.W;
     const drawCols = Math.min(cols, sim.W);
     const drawRows = Math.min(rows, sim.H);
+    // the texture drifts a full turn per minute, so 10 refreshes a second look identical to
+    // every frame; under reduced motion it is one still frame
+    if (tones.length !== cols * rows || (!reduced && now - tonesAt >= 100) || tonesAt < 0) {
+      if (tones.length !== cols * rows) tones = new Uint8Array(cols * rows);
+      const m = getMetrics();
+      fillTones(tones, cols, rows, m.lh / m.cw, texturePhase(now, reduced));
+      tonesAt = now;
+    }
     for (let y = 0; y < drawRows; y += 1) {
       const top0 = 2 * y * PW;
       const bot0 = top0 + PW;
@@ -200,6 +230,12 @@ export function startPond(app: HTMLElement): void {
           const bkt = waterBucket(v < 0 ? -v : v);
           ch = WATER_CH[bkt];
           col = bkt === 0 ? "" : (v > 0 ? WATER_CREST_HEX : WATER_TROUGH_HEX)[bkt];
+          // calm water shows the texture, except in the header and footer rows
+          if (bkt === 0 && y >= CHROME_ROWS && y < drawRows - CHROME_ROWS) {
+            const tone = tones[i0];
+            ch = TEX_CH[tone];
+            col = TEX_HEX[3 - tone]; // hiring indexes its shades by light level
+          }
         }
         const i = rowOff + x;
         if (chars[i] !== ch) {

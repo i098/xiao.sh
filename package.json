@@ -12,6 +12,7 @@
     "lint": "bun run typecheck",
     "fetch:linkedin-assets": "bun run scripts/fetch-linkedin-assets.ts",
     "sync:linkedin": "bun run scripts/sync-linkedin-about.ts",
+    "sync:projects": "bun run scripts/sync-projects.ts",
     "create:linkedin-session": "bun run scripts/create-linkedin-session.ts",
     "spotify:auth": "bun run scripts/spotify-auth.ts",
     "deploy:cf": "wrangler deploy"

@@ -2,7 +2,7 @@
 // so we inject real meta + Person JSON-LD + a visually-hidden content block, and serve
 // llms.txt / robots.txt / sitemap.xml — enough for search + AI crawlers to read who Jerry is.
 import { profile } from "@/lib/profile";
-import { projects } from "@/lib/projects";
+import type { Project } from "@/lib/projects";
 
 const ORIGIN = (process.env.PUBLIC_ORIGIN ?? "https://xiao.sh").replace(/\/$/, "");
 const PAGE_TITLE = `${profile.name} — ${profile.role}`;
@@ -35,7 +35,10 @@ export const SEO_HEAD = `
 <meta name="twitter:card" content="summary" />
 <script type="application/ld+json">${JSON.stringify(personLd)}</script>`;
 
-export const SEO_BODY = `
+const projectLabel = (p: Project) => (p.award ? ` (${p.award.place}, ${p.award.event})` : "");
+
+export function seoBody(projects: Project[]): string {
+  return `
 <main class="seo-content">
   <h1>${esc(profile.name)}</h1>
   <p>${esc(profile.role)} · CS @ ${esc(profile.education)} · ${esc(profile.location)}</p>
@@ -43,7 +46,7 @@ export const SEO_BODY = `
   <h2>Projects</h2>
   <ul>
     ${projects
-      .map((p) => `<li><a href="${esc(p.githubUrl)}">${esc(p.title)}</a> — ${esc(p.summary)}${p.highlight ? ` (${esc(p.highlight)})` : ""}</li>`)
+      .map((p) => `<li><a href="${esc(p.githubUrl)}">${esc(p.title)}</a> — ${esc(p.summary)}${esc(projectLabel(p))}</li>`)
       .join("\n    ")}
   </ul>
   <h2>Elsewhere</h2>
@@ -53,6 +56,7 @@ export const SEO_BODY = `
     <li><a href="mailto:${esc(profile.links.email)}">Email</a></li>
   </ul>
 </main>`;
+}
 
 export function robotsTxt() {
   // explicitly welcome AI crawlers
@@ -82,7 +86,7 @@ export function sitemapXml() {
 `;
 }
 
-export function llmsTxt() {
+export function llmsTxt(projects: Project[]) {
   return [
     `# ${profile.name}`,
     "",
@@ -91,7 +95,7 @@ export function llmsTxt() {
     `${profile.name} is a CS student and builder. This site is a terminal UI that runs in the browser. Ask its built-in AI about projects, hackathon wins, and stack.`,
     "",
     "## Projects",
-    ...projects.map((p) => `- [${p.title}](${p.githubUrl}): ${p.summary}${p.highlight ? ` (${p.highlight})` : ""}`),
+    ...projects.map((p) => `- [${p.title}](${p.githubUrl}): ${p.summary}${projectLabel(p)}`),
     "",
     "## Stack",
     `- ${profile.skills.join(", ")}`,

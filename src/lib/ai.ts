@@ -3,7 +3,7 @@
 // Dropped: the email-compose tool (mailto can't open in a terminal). Re-add if wanted.
 import { getLinkedInSnapshot } from "@/lib/linkedin";
 import { profile } from "@/lib/profile";
-import { projects } from "@/lib/projects";
+import { getProjects } from "@/lib/projects";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models";
@@ -86,7 +86,7 @@ function buildAgeAnswer(userMessage: string): string | null {
 
 async function buildProfileContext() {
   const linkedIn = await getLinkedInSnapshot().catch(() => null);
-  const projectLines = projects
+  const projectLines = (await getProjects())
     .map((p) => {
       const links = [
         `GitHub: ${p.githubUrl}`,
@@ -95,9 +95,8 @@ async function buildProfileContext() {
       ]
         .filter(Boolean)
         .join(" | ");
-      return `- ${p.title}: ${p.summary}\n  Tags: ${p.tags.join(", ")}\n  ${
-        p.highlight ? `Highlight: ${p.highlight}\n  ` : ""
-      }${links}`;
+      const award = p.award ? `Award: ${p.award.place}, ${p.award.event} (${p.award.when})\n  ` : "";
+      return `- ${p.title} (${p.year}, ${p.category}, ${p.role}, ${p.status}): ${p.summary}\n  Stack: ${p.stack.join(", ")}\n  ${award}${links}`;
     })
     .join("\n");
 

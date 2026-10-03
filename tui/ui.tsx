@@ -6,7 +6,12 @@ import type { ReactNode } from "react";
 export const ACCENT = "#43f08a";
 export const INK = "#e9ece9";
 export const MUTED = "#7c8a82";
-export const FAINT = "#2c3531";
+// FAINT is the quietest copy. The water texture runs behind every screen, so it sits above
+// the texture's brightest strand (#4c4c4c); the old #2c3531 drowned in it.
+export const FAINT = "#56645d";
+// dashed rules and dividers: they claim their whole row or column, so the texture never
+// touches them and they keep the old faint shade
+export const HAIRLINE = "#2c3531";
 export const SEL_BG = "#15211b";
 export const ERR = "#fda4af";
 // text rows paint no background — the koi pond (browser canvas on web, server-drawn over ssh)
