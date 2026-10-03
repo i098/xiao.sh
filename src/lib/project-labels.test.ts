@@ -70,6 +70,14 @@ test("role counts GitHub accounts when fetched; bot commits do not make a solo r
   expect(Object.fromEntries(projects.map((p) => [p.repo, p.role]))).toEqual({ "me/solo": "solo", "team/led": "lead", "team/joined": "team" });
 });
 
+test("role falls back on the GraphQL share when the contributors fetch failed", () => {
+  const { projects } = derive([
+    repo({ repo: "team/minor", commits: 70, mine: 7 }),
+    repo({ repo: "team/half", commits: 70, mine: 40 }),
+  ]);
+  expect(Object.fromEntries(projects.map((p) => [p.repo, p.role]))).toEqual({ "team/minor": "team", "team/half": "lead" });
+});
+
 test("overrides beat derived labels at sync time and again at read time", () => {
   const overrides = { "me/a": { set: { title: "Better A" } }, "me/b": { hide: true } };
   const { projects } = derive([repo({ repo: "me/a" }), repo({ repo: "me/b" })], overrides);

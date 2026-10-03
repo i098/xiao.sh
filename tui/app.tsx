@@ -1321,7 +1321,7 @@ function FieldLink({ k, href, text }: { k: string; href: string; text: string })
 
 function About({ linkedIn, list }: { linkedIn: LinkedInSnapshot; list: Project[] }) {
   const { width } = useTerminalDimensions();
-  const narrow = width < 64;
+  const narrow = width < 80;
   const wins = parseHonours((linkedIn.sections ?? []).find((s) => s.title === "Honors & Awards")?.items ?? []);
   const languages = [...new Set(((linkedIn.sections ?? []).find((s) => s.title === "Languages")?.items ?? []).map(compactLanguage))].filter(Boolean);
   // as many languages as fit on the line, no ellipsis
@@ -1336,7 +1336,7 @@ function About({ linkedIn, list }: { linkedIn: LinkedInSnapshot; list: Project[]
   const tagline = `${profile.role.toLowerCase()}  ·  ${profile.education.split(" ")[0].toLowerCase()}  ·  ${profile.location.split(",")[0].toLowerCase()}`;
   const short = (place: string) => (place.startsWith("1st") ? "1st" : place === "Track Prize" ? "prize" : place.split(" · ")[0]);
   const barW = narrow ? Math.max(8, width - 4 - 22) : 30;
-  const stacked = width < 148; // left 78 + gap 6 + right 62 + padding 2: below this the columns would clip
+  const stacked = width < 148;
   const left = (
     <box style={{ flexDirection: "column", width: narrow ? undefined : 78, flexShrink: 0 }}>
       {name.map((row, i) => (
