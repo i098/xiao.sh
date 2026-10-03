@@ -1320,7 +1320,7 @@ function FieldLink({ k, href, text }: { k: string; href: string; text: string })
 }
 
 function About({ linkedIn, list }: { linkedIn: LinkedInSnapshot; list: Project[] }) {
-  const { width } = useTerminalDimensions();
+  const { width, height } = useTerminalDimensions();
   const narrow = width < 80;
   const wins = parseHonours((linkedIn.sections ?? []).find((s) => s.title === "Honors & Awards")?.items ?? []);
   const languages = [...new Set(((linkedIn.sections ?? []).find((s) => s.title === "Languages")?.items ?? []).map(compactLanguage))].filter(Boolean);
@@ -1331,12 +1331,33 @@ function About({ linkedIn, list }: { linkedIn: LinkedInSnapshot; list: Project[]
     if (next.length <= (narrow ? width - 4 : 78) - 12) speaks = next;
   }
   const building = list.filter((p) => p.origin === "personal").sort((a, b) => b.pushedAt.localeCompare(a.pushedAt))[0];
-  const writes = writesIn(list).slice(0, narrow ? 4 : 6);
-  const name = banner(profile.name, !narrow);
+  const stacked = width < 148;
+  const extraRows = (building ? 1 : 0) + (wins[0] ? 1 : 0) + (profile.dob ? 1 : 0) + (speaks ? 1 : 0);
+  // rows left for the two lists: screen minus header/footer (6), padding, the left column when
+  // stacked, and the fixed rows of the right column (2 headings + the gap between); overflow overprints rows
+  const budgetFor = (nameRows: number, gap: number, linkRows: number) =>
+    height - 6 - 1 - (stacked ? nameRows + 3 + linkRows + 4 * gap + extraRows + gap : 0) - 2 - gap;
+  // stacked on a short screen: first the 2-row banner instead of the 5-row one, then drop the spacer
+  // rows and put the links on one line, so at least a few wins and languages always fit
+  const compact = narrow || (stacked && budgetFor(5, 1, 3) < 4);
+  const tight = stacked && budgetFor(2, 1, 3) < 4;
+  const gap = tight ? 0 : 1;
+  const name = banner(profile.name, !compact);
   const tagline = `${profile.role.toLowerCase()}  ·  ${profile.education.split(" ")[0].toLowerCase()}  ·  ${profile.location.split(",")[0].toLowerCase()}`;
   const short = (place: string) => (place.startsWith("1st") ? "1st" : place === "Track Prize" ? "prize" : place.split(" · ")[0]);
   const barW = narrow ? Math.max(8, width - 4 - 22) : 30;
-  const stacked = width < 148;
+  const budget = budgetFor(name.length, gap, tight ? 1 : 3);
+  const nWrites = Math.max(0, Math.min(narrow ? 4 : 6, Math.floor(budget / 2)));
+  const nWins = Math.max(0, Math.min(narrow ? 5 : 8, budget - nWrites));
+  const writesShown = writesIn(list).slice(0, nWrites);
+  const bare = (u: string) => u.replace(/^https:\/\/(www\.)?/, "").replace(/\/$/, "");
+  // tight: github · linkedin · email on one row, as many as fit the width
+  let linkW = narrow ? 0 : 12;
+  const tightLinks = [
+    { href: profile.links.github, text: bare(profile.links.github) },
+    { href: profile.links.linkedin, text: bare(profile.links.linkedin) },
+    { href: `mailto:${profile.links.email}`, text: profile.links.email },
+  ].filter((l) => (linkW += l.text.length + 3) - 3 <= width - 4);
   const left = (
     <box style={{ flexDirection: "column", width: narrow ? undefined : 78, flexShrink: 0 }}>
       {name.map((row, i) => (
@@ -1344,11 +1365,11 @@ function About({ linkedIn, list }: { linkedIn: LinkedInSnapshot; list: Project[]
           {row}
         </text>
       ))}
-      <box style={{ height: 1 }} />
+      <box style={{ height: gap }} />
       <text bg={PANEL} fg={ACCENT}>
         {narrow ? profile.role.toLowerCase() : tagline}
       </text>
-      <box style={{ height: 1 }} />
+      <box style={{ height: gap }} />
       <text bg={PANEL} fg={MUTED}>
         NOW
       </text>
@@ -1367,7 +1388,7 @@ function About({ linkedIn, list }: { linkedIn: LinkedInSnapshot; list: Project[]
           <span fg={INK}>{birthday(profile.dob)}</span>
         </Field>
       )}
-      <box style={{ height: 1 }} />
+      <box style={{ height: gap }} />
       <Field k="based">
         <span fg={INK}>{(narrow ? LOCATIONS.map((l) => l.split(",")[0]) : LOCATIONS).join(narrow ? " · " : "  ·  ")}</span>
       </Field>
@@ -1376,34 +1397,53 @@ function About({ linkedIn, list }: { linkedIn: LinkedInSnapshot; list: Project[]
           <span fg={INK}>{speaks}</span>
         </Field>
       )}
-      <box style={{ height: 1 }} />
-      <FieldLink k="github" href={profile.links.github} text={profile.links.github.replace(/^https:\/\/(www\.)?/, "").replace(/\/$/, "")} />
-      <FieldLink k="linkedin" href={profile.links.linkedin} text={profile.links.linkedin.replace(/^https:\/\/(www\.)?/, "").replace(/\/$/, "")} />
-      <FieldLink k="email" href={`mailto:${profile.links.email}`} text={profile.links.email} />
+      <box style={{ height: gap }} />
+      {tight ? (
+        <text bg={PANEL} wrapMode="none">
+          {tightLinks.map((l, i) => (
+            <span key={l.text}>
+              <span fg={FAINT}>{i === 0 ? (narrow ? "" : "links".padEnd(12)) : "   "}</span>
+              <a href={l.href} fg={ACCENT} attributes={TextAttributes.UNDERLINE}>{l.text}</a>
+            </span>
+          ))}
+        </text>
+      ) : (
+        <>
+          <FieldLink k="github" href={profile.links.github} text={bare(profile.links.github)} />
+          <FieldLink k="linkedin" href={profile.links.linkedin} text={bare(profile.links.linkedin)} />
+          <FieldLink k="email" href={`mailto:${profile.links.email}`} text={profile.links.email} />
+        </>
+      )}
     </box>
   );
   const right = (
-    <box style={{ flexDirection: "column", paddingLeft: stacked ? 0 : 6, paddingTop: stacked ? 1 : 0 }}>
-      <text bg={PANEL}>
-        <span fg={MUTED}>WINS</span>
-        <span fg={FAINT}>{`  ${wins.length}`}</span>
-      </text>
-      {wins.slice(0, narrow ? 5 : 8).map((h) => (
+    <box style={{ flexDirection: "column", paddingLeft: stacked ? 0 : 6, paddingTop: stacked ? gap : 0 }}>
+      {nWins > 0 && (
+        <text bg={PANEL}>
+          <span fg={MUTED}>WINS</span>
+          <span fg={FAINT}>{`  ${wins.length}`}</span>
+        </text>
+      )}
+      {wins.slice(0, nWins).map((h) => (
         <text key={h.text} bg={PANEL} wrapMode="none">
           <span fg={FAINT}>{`${h.when.slice(0, 3).toUpperCase()} ${h.when.slice(-2)}  `}</span>
           <span fg={h.place.startsWith("1st") ? ACCENT : INK}>{short(h.place).padEnd(7)}</span>
           <span fg={MUTED}>{truncate(h.event.replace(/ Hackathon$/i, ""), narrow ? width - 20 : 40)}</span>
         </text>
       ))}
-      <box style={{ height: 1 }} />
-      <text bg={PANEL}>
-        <span fg={MUTED}>WRITES IN</span>
-        <span fg={FAINT}>{"  by his commits"}</span>
-      </text>
-      {writes.map((l) => (
+      {nWrites > 0 && (
+        <>
+          {nWins > 0 && <box style={{ height: gap }} />}
+          <text bg={PANEL}>
+            <span fg={MUTED}>WRITES IN</span>
+            <span fg={FAINT}>{"  by his commits"}</span>
+          </text>
+        </>
+      )}
+      {writesShown.map((l) => (
         <text key={l.name} bg={PANEL} wrapMode="none">
           <span fg={MUTED}>{l.name.padEnd(12)}</span>
-          <span fg={techTag(l.name).col}>{"▆".repeat(Math.max(1, Math.round((l.pct / (writes[0]?.pct || 1)) * barW)))}</span>
+          <span fg={techTag(l.name).col}>{"▆".repeat(Math.max(1, Math.round((l.pct / (writesShown[0]?.pct || 1)) * barW)))}</span>
           <span fg={FAINT}>{` ${Math.round(l.pct)}%`}</span>
         </text>
       ))}
