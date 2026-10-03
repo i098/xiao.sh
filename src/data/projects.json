@@ -1,0 +1,1818 @@
+[
+ {
+  "repo": "undeemed/kimi-k3-in-rust",
+  "title": "kimi-k3-in-rust",
+  "summary": "CPU inference for Kimi K3, a 2.78T-parameter MoE LLM, in pure Rust.",
+  "category": "ML systems",
+  "origin": "personal",
+  "stack": [
+   "Rust",
+   "PyTorch"
+  ],
+  "langs": [
+   {
+    "name": "Rust",
+    "pct": 92
+   },
+   {
+    "name": "Python",
+    "pct": 5
+   },
+   {
+    "name": "Shell",
+    "pct": 3
+   }
+  ],
+  "year": 2026,
+  "created": "2026-08-09T07:31:44Z",
+  "pushedAt": "2026-08-14T18:16:04Z",
+  "status": "recent",
+  "role": "solo",
+  "share": 1,
+  "commits": 4,
+  "stars": 24,
+  "githubUrl": "https://github.com/undeemed/kimi-k3-in-rust",
+  "score": 92
+ },
+ {
+  "repo": "undeemed/get-shit-done-codex",
+  "title": "get-shit-done-codex",
+  "summary": "A light-weight and powerful meta-prompting, context engineering and spec-driven development system for Codex, originally by TÂCHES.",
+  "category": "Dev tools",
+  "origin": "contrib",
+  "stack": [
+   "JavaScript"
+  ],
+  "langs": [
+   {
+    "name": "JavaScript",
+    "pct": 100
+   }
+  ],
+  "year": 2026,
+  "created": "2026-01-09T08:10:23Z",
+  "pushedAt": "2026-03-04T10:10:31Z",
+  "status": "dormant",
+  "role": "contributor",
+  "share": 0.07,
+  "commits": 77,
+  "stars": 22,
+  "githubUrl": "https://github.com/undeemed/get-shit-done-codex",
+  "score": 79
+ },
+ {
+  "repo": "shlawgathon/interpreter",
+  "title": "interpreter",
+  "summary": "Audio translation everywhere and anywhere.",
+  "category": "Agents & AI",
+  "origin": "hackathon",
+  "stack": [
+   "TypeScript",
+   "Python",
+   "Rust",
+   "FastAPI",
+   "Bun"
+  ],
+  "langs": [
+   {
+    "name": "TypeScript",
+    "pct": 50
+   },
+   {
+    "name": "Python",
+    "pct": 17
+   },
+   {
+    "name": "CSS",
+    "pct": 15
+   },
+   {
+    "name": "Rust",
+    "pct": 15
+   },
+   {
+    "name": "JavaScript",
+    "pct": 2
+   }
+  ],
+  "year": 2026,
+  "created": "2026-02-21T20:03:54Z",
+  "pushedAt": "2026-03-14T04:26:45Z",
+  "status": "shipped",
+  "role": "lead",
+  "share": 0.89,
+  "commits": 31,
+  "stars": 4,
+  "award": {
+   "place": "1st overall",
+   "event": "RETURN OF THE AGENTS Hackathon",
+   "when": "Feb 2026",
+   "at": "2026-02-01",
+   "sure": true
+  },
+  "homepage": "https://www.loom.com/share/2ce8d0bf13774a27bd1bccddd4daffb2",
+  "githubUrl": "https://github.com/shlawgathon/interpreter",
+  "score": 63,
+  "linkedinUrl": "https://www.linkedin.com/posts/xiaojerry_exploring-the-features-of-a-live-translator-activity-7431220415206744064-0h-U?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEerNM8BaiLwsyO2-11sjJzKRTO2VXWvfD4",
+  "eventUrl": "https://luma.com/0xgxtpdt?tk=FJOJQR"
+ },
+ {
+  "repo": "shlawgathon/BlueDocs",
+  "title": "BlueDocs",
+  "summary": "An interactive ocean planning tool with live status updates and environment mapping powered by mapbox.",
+  "category": "Web apps",
+  "origin": "hackathon",
+  "stack": [
+   "TypeScript",
+   "Python",
+   "Next.js",
+   "React",
+   "FastAPI"
+  ],
+  "langs": [
+   {
+    "name": "TypeScript",
+    "pct": 69
+   },
+   {
+    "name": "HTML",
+    "pct": 14
+   },
+   {
+    "name": "Python",
+    "pct": 12
+   },
+   {
+    "name": "JavaScript",
+    "pct": 3
+   },
+   {
+    "name": "CSS",
+    "pct": 2
+   }
+  ],
+  "year": 2026,
+  "created": "2026-02-28T21:12:51Z",
+  "pushedAt": "2026-04-29T17:20:08Z",
+  "status": "shipped",
+  "role": "lead",
+  "share": 0.68,
+  "commits": 15,
+  "stars": 2,
+  "award": {
+   "place": "1st · Governance track",
+   "event": "OceanTech Hackathon",
+   "when": "Mar 2026",
+   "at": "2026-03-01",
+   "sure": true
+  },
+  "homepage": "https://blue-docs-seven.vercel.app",
+  "githubUrl": "https://github.com/shlawgathon/BlueDocs",
+  "score": 58
+ },
+ {
+  "repo": "shlawgathon/ICBG",
+  "title": "Intercontinental Ballistic Gifts",
+  "summary": "ICBG is a full-stack application that combines an interactive 3D globe interface with AI-powered gift recommendations to help Santa efficiently dispa…",
+  "category": "Web apps",
+  "origin": "hackathon",
+  "stack": [
+   "TypeScript",
+   "Next.js",
+   "React"
+  ],
+  "langs": [
+   {
+    "name": "TypeScript",
+    "pct": 96
+   },
+   {
+    "name": "JavaScript",
+    "pct": 2
+   },
+   {
+    "name": "CSS",
+    "pct": 2
+   }
+  ],
+  "year": 2025,
+  "created": "2025-12-15T01:52:54Z",
+  "pushedAt": "2025-12-15T16:08:28Z",
+  "status": "shipped",
+  "role": "team",
+  "share": 0.36,
+  "commits": 10,
+  "stars": 2,
+  "award": {
+   "place": "1st · Logistic track",
+   "event": "Santa's Ho's HackNight",
+   "when": "Dec 2025",
+   "at": "2025-12-01",
+   "sure": false
+  },
+  "homepage": "https://icbg.vercel.app",
+  "githubUrl": "https://github.com/shlawgathon/ICBG",
+  "score": 55,
+  "linkedinUrl": "https://www.linkedin.com/posts/xiaojerry_last-night-we-aritra-saharay-wei-tu-and-activity-7406439444557443072-a_O6?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEerNM8BaiLwsyO2-11sjJzKRTO2VXWvfD4",
+  "eventUrl": "https://luma.com/9ecbetao?tk=KZdXd4"
+ },
+ {
+  "repo": "shlawgathon/Physical",
+  "title": "Physical.ai",
+  "summary": "Analytics for the physical world with real time ad preview.",
+  "category": "Web apps",
+  "origin": "hackathon",
+  "stack": [
+   "TypeScript",
+   "Next.js",
+   "Supabase",
+   "Stripe"
+  ],
+  "langs": [
+   {
+    "name": "TypeScript",
+    "pct": 92
+   },
+   {
+    "name": "Python",
+    "pct": 5
+   },
+   {
+    "name": "PLpgSQL",
+    "pct": 2
+   },
+   {
+    "name": "CSS",
+    "pct": 1
+   }
+  ],
+  "year": 2026,
+  "created": "2026-01-25T02:11:57Z",
+  "pushedAt": "2026-01-27T23:02:51Z",
+  "status": "shipped",
+  "role": "lead",
+  "share": 0.48,
+  "commits": 57,
+  "stars": 3,
+  "award": {
+   "place": "Top 6",
+   "event": "Y Combinator Full Stack Hackathon",
+   "when": "Jan 2026",
+   "at": "2026-01-01",
+   "sure": true
+  },
+  "homepage": "https://physical-web-dusky.vercel.app/",
+  "githubUrl": "https://github.com/shlawgathon/Physical",
+  "score": 48,
+  "linkedinUrl": "https://www.linkedin.com/posts/xiaojerry_within-24-hours-we-aritra-saharay-neil-activity-7421684534938767361-2Dxc?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEerNM8BaiLwsyO2-11sjJzKRTO2VXWvfD4",
+  "eventUrl": "https://events.ycombinator.com/fullstackhackathon"
+ },
+ {
+  "repo": "shlawgathon/WebBrain",
+  "title": "WebBrain",
+  "summary": "Your Evolving Digital Memory - Capture, compress, and search your browsing history intelligently",
+  "category": "Agents & AI",
+  "origin": "hackathon",
+  "stack": [
+   "Java",
+   "JavaScript",
+   "React",
+   "MongoDB"
+  ],
+  "langs": [
+   {
+    "name": "Java",
+    "pct": 37
+   },
+   {
+    "name": "HTML",
+    "pct": 33
+   },
+   {
+    "name": "JavaScript",
+    "pct": 20
+   },
+   {
+    "name": "TypeScript",
+    "pct": 4
+   },
+   {
+    "name": "CSS",
+    "pct": 4
+   },
+   {
+    "name": "Shell",
+    "pct": 2
+   }
+  ],
+  "year": 2025,
+  "created": "2025-10-11T17:33:19Z",
+  "pushedAt": "2025-10-12T00:33:08Z",
+  "status": "shipped",
+  "role": "team",
+  "share": 0.38,
+  "commits": 12,
+  "stars": 5,
+  "award": {
+   "place": "3rd",
+   "event": "MongoDB Hackathon",
+   "when": "Oct 2025",
+   "at": "2025-10-01",
+   "sure": true
+  },
+  "githubUrl": "https://github.com/shlawgathon/WebBrain",
+  "score": 46,
+  "linkedinUrl": "https://www.linkedin.com/posts/xiaojerry_i-had-lots-of-fun-at-the-mongodb-agentic-activity-7383038759665164288-yzTn?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEerNM8BaiLwsyO2-11sjJzKRTO2VXWvfD4",
+  "eventUrl": "https://cerebralvalley.ai/e/mongoDB-hackathon?tab=guest-list"
+ },
+ {
+  "repo": "shlawgathon/productkit",
+  "title": "productkit",
+  "summary": "An agentic platform to automatically generate product listings for user-facing pages, Shopify integrations, and FAQ/documentation.",
+  "category": "Agents & AI",
+  "origin": "hackathon",
+  "stack": [
+   "TypeScript",
+   "Kotlin",
+   "Next.js",
+   "MongoDB",
+   "Bun"
+  ],
+  "langs": [
+   {
+    "name": "TypeScript",
+    "pct": 58
+   },
+   {
+    "name": "Kotlin",
+    "pct": 40
+   },
+   {
+    "name": "CSS",
+    "pct": 1
+   }
+  ],
+  "year": 2025,
+  "created": "2025-11-22T18:11:08Z",
+  "pushedAt": "2025-11-25T06:04:05Z",
+  "status": "shipped",
+  "role": "team",
+  "share": 0.32,
+  "commits": 47,
+  "stars": 3,
+  "award": {
+   "place": "Top 6",
+   "event": "Hack FLUX: Beyond One Hackathon",
+   "when": "Nov 2025",
+   "at": "2025-11-01",
+   "sure": true
+  },
+  "githubUrl": "https://github.com/shlawgathon/productkit",
+  "score": 44,
+  "linkedinUrl": "https://www.linkedin.com/posts/xiaojerry_github-shlawgathonproductkit-an-agentic-activity-7398606880346030080-OeHb?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEerNM8BaiLwsyO2-11sjJzKRTO2VXWvfD4",
+  "eventUrl": "https://cerebralvalley.ai/e/bfl-hackathon?tab=guest-list"
+ },
+ {
+  "repo": "undeemed/sanctum",
+  "title": "sanctum",
+  "summary": "Open-source ambient AI and shared agent memory.",
+  "category": "Agents & AI",
+  "origin": "personal",
+  "stack": [
+   "TypeScript",
+   "Cloudflare"
+  ],
+  "langs": [
+   {
+    "name": "TypeScript",
+    "pct": 91
+   },
+   {
+    "name": "Rust",
+    "pct": 5
+   },
+   {
+    "name": "Python",
+    "pct": 2
+   },
+   {
+    "name": "HTML",
+    "pct": 1
+   },
+   {
+    "name": "CSS",
+    "pct": 1
+   }
+  ],
+  "year": 2026,
+  "created": "2026-09-28T22:45:31Z",
+  "pushedAt": "2026-10-03T06:16:59Z",
+  "status": "active",
+  "role": "solo",
+  "share": 0.99,
+  "commits": 206,
+  "stars": 0,
+  "homepage": "https://undeemed.github.io/sanctum/",
+  "githubUrl": "https://github.com/undeemed/sanctum",
+  "score": 43
+ },
+ {
+  "repo": "undeemed/Code-Factory",
+  "title": "Code-Factory",
+  "summary": "The fleet that never sleeps.",
+  "category": "Infra",
+  "origin": "personal",
+  "stack": [
+   "Python",
+   "Shell",
+   "TypeScript",
+   "Supabase",
+   "Docker"
+  ],
+  "langs": [
+   {
+    "name": "Python",
+    "pct": 52
+   },
+   {
+    "name": "Shell",
+    "pct": 30
+   },
+   {
+    "name": "TypeScript",
+    "pct": 9
+   },
+   {
+    "name": "Jinja",
+    "pct": 5
+   },
+   {
+    "name": "Dockerfile",
+    "pct": 2
+   },
+   {
+    "name": "JavaScript",
+    "pct": 1
+   },
+   {
+    "name": "PLpgSQL",
+    "pct": 1
+   }
+  ],
+  "year": 2026,
+  "created": "2026-09-15T01:47:34Z",
+  "pushedAt": "2026-10-02T01:46:00Z",
+  "status": "active",
+  "role": "solo",
+  "share": 0.94,
+  "commits": 107,
+  "stars": 2,
+  "githubUrl": "https://github.com/undeemed/Code-Factory",
+  "score": 42
+ },
+ {
+  "repo": "shlawgathon/sportsclips",
+  "title": "sportsclips",
+  "summary": "TikTok, but fully automated for sports highlights & live commentary generation.",
+  "category": "Agents & AI",
+  "origin": "hackathon",
+  "stack": [
+   "Python",
+   "Swift",
+   "Kotlin",
+   "MongoDB",
+   "Cloudflare"
+  ],
+  "langs": [
+   {
+    "name": "Python",
+    "pct": 42
+   },
+   {
+    "name": "Swift",
+    "pct": 41
+   },
+   {
+    "name": "Kotlin",
+    "pct": 17
+   }
+  ],
+  "year": 2025,
+  "created": "2025-10-18T16:33:23Z",
+  "pushedAt": "2025-10-19T21:56:51Z",
+  "status": "shipped",
+  "role": "team",
+  "share": 0.18,
+  "commits": 34,
+  "stars": 2,
+  "award": {
+   "place": "Top 6",
+   "event": "Google Gemini Hackathon",
+   "when": "Oct 2025",
+   "at": "2025-10-01",
+   "sure": true
+  },
+  "githubUrl": "https://github.com/shlawgathon/sportsclips",
+  "score": 39,
+  "linkedinUrl": "https://www.linkedin.com/posts/xiaojerry_another-day-another-hackathon-shack15-activity-7385938406486437888-_u5O?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEerNM8BaiLwsyO2-11sjJzKRTO2VXWvfD4",
+  "eventUrl": "https://cerebralvalley.ai/e/2025-ted-ai-hackathon?tab=guest-list"
+ },
+ {
+  "repo": "undeemed/firstmate",
+  "title": "firstmate",
+  "summary": "Talk to one agent. Ship with a crew.",
+  "category": "Agents & AI",
+  "origin": "contrib",
+  "stack": [
+   "Shell"
+  ],
+  "langs": [
+   {
+    "name": "Shell",
+    "pct": 94
+   },
+   {
+    "name": "TypeScript",
+    "pct": 3
+   },
+   {
+    "name": "Python",
+    "pct": 2
+   },
+   {
+    "name": "JavaScript",
+    "pct": 1
+   }
+  ],
+  "year": 2026,
+  "created": "2026-07-06T21:34:03Z",
+  "pushedAt": "2026-09-29T05:14:01Z",
+  "status": "active",
+  "role": "contributor",
+  "share": 0.16,
+  "commits": 140,
+  "stars": 0,
+  "githubUrl": "https://github.com/undeemed/firstmate",
+  "score": 39
+ },
+ {
+  "repo": "undeemed/fpsmaxxing",
+  "title": "fpsmaxxing",
+  "summary": "Open-source Rust control plane for AI-driven FPS, frame-time, latency, thermals, and system performance tuning.",
+  "category": "Hardware & games",
+  "origin": "personal",
+  "stack": [
+   "Rust"
+  ],
+  "langs": [
+   {
+    "name": "Rust",
+    "pct": 100
+   }
+  ],
+  "year": 2026,
+  "created": "2026-07-13T03:26:19Z",
+  "pushedAt": "2026-09-28T16:07:38Z",
+  "status": "active",
+  "role": "lead",
+  "share": 0.83,
+  "commits": 35,
+  "stars": 3,
+  "githubUrl": "https://github.com/undeemed/fpsmaxxing",
+  "score": 37
+ },
+ {
+  "repo": "undeemed/Jcyber",
+  "title": "Jcyber",
+  "summary": "Agent-driven bug bounty / pentest framework: one gated chain over five systems (Caido, HexStrike, Jev, Memgraph, TencentDB, Prometheus)",
+  "category": "Agents & AI",
+  "origin": "personal",
+  "stack": [
+   "Python",
+   "Docker"
+  ],
+  "langs": [
+   {
+    "name": "Python",
+    "pct": 95
+   },
+   {
+    "name": "Cypher",
+    "pct": 5
+   }
+  ],
+  "year": 2026,
+  "created": "2026-09-19T07:41:33Z",
+  "pushedAt": "2026-10-01T08:55:32Z",
+  "status": "active",
+  "role": "solo",
+  "share": 1,
+  "commits": 33,
+  "stars": 2,
+  "githubUrl": "https://github.com/undeemed/Jcyber",
+  "score": 34
+ },
+ {
+  "repo": "shlawgathon/tactile",
+  "title": "tactile",
+  "summary": "The ultimate multi-agent orchestrated CAD analysis and update platform.",
+  "category": "Agents & AI",
+  "origin": "hackathon",
+  "stack": [
+   "Java",
+   "Python",
+   "TypeScript",
+   "Next.js",
+   "FastAPI",
+   "MongoDB"
+  ],
+  "langs": [
+   {
+    "name": "Java",
+    "pct": 42
+   },
+   {
+    "name": "Python",
+    "pct": 37
+   },
+   {
+    "name": "TypeScript",
+    "pct": 20
+   }
+  ],
+  "year": 2026,
+  "created": "2026-01-10T17:49:46Z",
+  "pushedAt": "2026-01-12T21:30:32Z",
+  "status": "shipped",
+  "role": "team",
+  "share": 0.25,
+  "commits": 44,
+  "stars": 7,
+  "homepage": "https://tactile3d.dev",
+  "githubUrl": "https://github.com/shlawgathon/tactile",
+  "score": 33
+ },
+ {
+  "repo": "undeemed/a2d",
+  "title": "a2d",
+  "summary": "Convert open-weight autoregressive LLMs into diffusion language models - locally, with one command",
+  "category": "ML systems",
+  "origin": "personal",
+  "stack": [
+   "Python",
+   "Rust"
+  ],
+  "langs": [
+   {
+    "name": "Python",
+    "pct": 58
+   },
+   {
+    "name": "Rust",
+    "pct": 42
+   }
+  ],
+  "year": 2026,
+  "created": "2026-07-02T13:16:31Z",
+  "pushedAt": "2026-09-24T15:33:52Z",
+  "status": "active",
+  "role": "lead",
+  "share": 0.64,
+  "commits": 16,
+  "stars": 2,
+  "githubUrl": "https://github.com/undeemed/a2d",
+  "score": 32
+ },
+ {
+  "repo": "undeemed/tetanus",
+  "title": "tetanus",
+  "summary": "A Rust agent harness that runs the DeepSeek Harness turn flow, headlessly and offline by default.",
+  "category": "Web apps",
+  "origin": "personal",
+  "stack": [
+   "Rust"
+  ],
+  "langs": [
+   {
+    "name": "Rust",
+    "pct": 96
+   },
+   {
+    "name": "JavaScript",
+    "pct": 3
+   }
+  ],
+  "year": 2026,
+  "created": "2026-08-18T23:16:52Z",
+  "pushedAt": "2026-09-04T20:41:08Z",
+  "status": "recent",
+  "role": "solo",
+  "share": 1,
+  "commits": 213,
+  "stars": 0,
+  "githubUrl": "https://github.com/undeemed/tetanus",
+  "score": 32
+ },
+ {
+  "repo": "undeemed/wuwa-toolkit",
+  "title": "wuwa-toolkit",
+  "summary": "WuWa Toolkit for Wuthering Waves: RTXMFG 3x/4x/5x/6x via GPU-name spoofing + tweaks, optional neural rendering, resolution controls, setup and uninst…",
+  "category": "ML systems",
+  "origin": "personal",
+  "stack": [
+   "Python",
+   "C++"
+  ],
+  "langs": [
+   {
+    "name": "Python",
+    "pct": 88
+   },
+   {
+    "name": "C++",
+    "pct": 8
+   },
+   {
+    "name": "Cuda",
+    "pct": 3
+   },
+   {
+    "name": "PowerShell",
+    "pct": 1
+   }
+  ],
+  "year": 2026,
+  "created": "2026-09-14T12:57:13Z",
+  "pushedAt": "2026-09-16T03:33:46Z",
+  "status": "recent",
+  "role": "solo",
+  "share": 1,
+  "commits": 59,
+  "stars": 1,
+  "githubUrl": "https://github.com/undeemed/wuwa-toolkit",
+  "score": 32
+ },
+ {
+  "repo": "shlawgathon/friendly",
+  "title": "friendly",
+  "summary": "Automatically find friends within your close network with shared interests at a click of a button!",
+  "category": "Agents & AI",
+  "origin": "hackathon",
+  "stack": [
+   "Python",
+   "TypeScript",
+   "Next.js",
+   "React",
+   "FastAPI"
+  ],
+  "langs": [
+   {
+    "name": "Python",
+    "pct": 63
+   },
+   {
+    "name": "TypeScript",
+    "pct": 34
+   },
+   {
+    "name": "CSS",
+    "pct": 2
+   }
+  ],
+  "year": 2026,
+  "created": "2026-02-27T19:45:47Z",
+  "pushedAt": "2026-02-28T03:22:38Z",
+  "status": "shipped",
+  "role": "lead",
+  "share": 0.85,
+  "commits": 11,
+  "stars": 0,
+  "award": {
+   "place": "Track Prize",
+   "event": "Autonomous Agents Hackathon",
+   "when": "Feb 2026",
+   "at": "2026-02-01",
+   "sure": false
+  },
+  "githubUrl": "https://github.com/shlawgathon/friendly",
+  "score": 31
+ },
+ {
+  "repo": "undeemed/jev-mod",
+  "title": "jev-mod",
+  "summary": "Jev-powered Discord moderation bot. Configure TypeSafe Jev rules, bring your own API key, and self-host on Cloudflare or Docker.",
+  "category": "Agents & AI",
+  "origin": "personal",
+  "stack": [
+   "TypeScript",
+   "JavaScript",
+   "React",
+   "Cloudflare",
+   "Docker"
+  ],
+  "langs": [
+   {
+    "name": "TypeScript",
+    "pct": 72
+   },
+   {
+    "name": "JavaScript",
+    "pct": 21
+   },
+   {
+    "name": "CSS",
+    "pct": 7
+   }
+  ],
+  "year": 2026,
+  "created": "2026-09-29T00:14:18Z",
+  "pushedAt": "2026-09-30T00:02:03Z",
+  "status": "active",
+  "role": "solo",
+  "share": 1,
+  "commits": 35,
+  "stars": 0,
+  "homepage": "jevmod.us",
+  "githubUrl": "https://github.com/undeemed/jev-mod",
+  "score": 31
+ },
+ {
+  "repo": "Northeastern-Research-ORNL-1/pyreflect-interface",
+  "title": "pyreflect-interface",
+  "summary": "A minimal, monochrome web interface for the pyreflect neutron reflectivity analysis package.",
+  "category": "Research",
+  "origin": "research",
+  "stack": [
+   "Python",
+   "TypeScript",
+   "Next.js",
+   "React",
+   "Redis"
+  ],
+  "langs": [
+   {
+    "name": "Python",
+    "pct": 49
+   },
+   {
+    "name": "TypeScript",
+    "pct": 46
+   },
+   {
+    "name": "CSS",
+    "pct": 5
+   }
+  ],
+  "year": 2026,
+  "created": "2026-01-14T22:22:57Z",
+  "pushedAt": "2026-04-01T21:42:16Z",
+  "status": "dormant",
+  "role": "solo",
+  "share": 0.93,
+  "commits": 436,
+  "stars": 1,
+  "homepage": "https://pyreflect.shlawg.com",
+  "githubUrl": "https://github.com/Northeastern-Research-ORNL-1/pyreflect-interface",
+  "score": 26
+ },
+ {
+  "repo": "undeemed/manifest",
+  "title": "manifest",
+  "summary": "Kill learned helplessness in AI coding agents.",
+  "category": "Agents & AI",
+  "origin": "personal",
+  "stack": [
+   "Python",
+   "Shell",
+   "C"
+  ],
+  "langs": [
+   {
+    "name": "Python",
+    "pct": 41
+   },
+   {
+    "name": "Shell",
+    "pct": 34
+   },
+   {
+    "name": "C",
+    "pct": 25
+   }
+  ],
+  "year": 2026,
+  "created": "2026-08-11T06:54:36Z",
+  "pushedAt": "2026-08-13T05:34:43Z",
+  "status": "recent",
+  "role": "solo",
+  "share": 1,
+  "commits": 28,
+  "stars": 1,
+  "githubUrl": "https://github.com/undeemed/manifest",
+  "score": 25
+ },
+ {
+  "repo": "undeemed/mlx-dllm",
+  "title": "mlx-dllm",
+  "summary": "MLX inference runtime for a2d masked-diffusion language models (Apple Silicon)",
+  "category": "ML systems",
+  "origin": "personal",
+  "stack": [
+   "Python",
+   "MLX"
+  ],
+  "langs": [
+   {
+    "name": "Python",
+    "pct": 100
+   }
+  ],
+  "year": 2026,
+  "created": "2026-07-11T07:54:41Z",
+  "pushedAt": "2026-08-03T02:04:08Z",
+  "status": "recent",
+  "role": "solo",
+  "share": 1,
+  "commits": 10,
+  "stars": 2,
+  "githubUrl": "https://github.com/undeemed/mlx-dllm",
+  "score": 25
+ },
+ {
+  "repo": "undeemed/pr-standup",
+  "title": "pr-standup",
+  "summary": "Agent skill: build a dated, date-grouped open-PR standup board and Discord paste from live GitHub data",
+  "category": "Agents & AI",
+  "origin": "personal",
+  "stack": [
+   "Python"
+  ],
+  "langs": [
+   {
+    "name": "Python",
+    "pct": 100
+   }
+  ],
+  "year": 2026,
+  "created": "2026-09-16T06:39:49Z",
+  "pushedAt": "2026-10-02T19:12:02Z",
+  "status": "active",
+  "role": "solo",
+  "share": 1,
+  "commits": 3,
+  "stars": 0,
+  "githubUrl": "https://github.com/undeemed/pr-standup",
+  "score": 25
+ },
+ {
+  "repo": "undeemed/windows-95-web-designer",
+  "title": "windows-95-web-designer",
+  "summary": "Windows 95 web design skill, extracted from curiositech/windags-skills for customization.",
+  "category": "Dev tools",
+  "origin": "personal",
+  "stack": [],
+  "langs": [],
+  "year": 2026,
+  "created": "2026-09-30T05:05:36Z",
+  "pushedAt": "2026-09-30T05:05:44Z",
+  "status": "active",
+  "role": "solo",
+  "share": 1,
+  "commits": 1,
+  "stars": 0,
+  "githubUrl": "https://github.com/undeemed/windows-95-web-designer",
+  "score": 25
+ },
+ {
+  "repo": "undeemed/manual-metal",
+  "title": "manual-metal",
+  "summary": "Full-body VR-tracker teleoperation of humanoid robots, simulation first",
+  "category": "Hardware & games",
+  "origin": "personal",
+  "stack": [
+   "Python"
+  ],
+  "langs": [
+   {
+    "name": "Python",
+    "pct": 99
+   },
+   {
+    "name": "Shell",
+    "pct": 1
+   }
+  ],
+  "year": 2026,
+  "created": "2026-08-23T07:40:08Z",
+  "pushedAt": "2026-08-23T07:40:11Z",
+  "status": "recent",
+  "role": "solo",
+  "share": 1,
+  "commits": 6,
+  "stars": 0,
+  "githubUrl": "https://github.com/undeemed/manual-metal",
+  "score": 21
+ },
+ {
+  "repo": "undeemed/claude-config",
+  "title": "claude-config",
+  "summary": "Personal Claude Code config snapshot — for fast setup on a fresh machine.",
+  "category": "Agents & AI",
+  "origin": "personal",
+  "stack": [
+   "Python",
+   "Shell",
+   "JavaScript"
+  ],
+  "langs": [
+   {
+    "name": "Python",
+    "pct": 72
+   },
+   {
+    "name": "Shell",
+    "pct": 14
+   },
+   {
+    "name": "JavaScript",
+    "pct": 12
+   },
+   {
+    "name": "HTML",
+    "pct": 3
+   }
+  ],
+  "year": 2026,
+  "created": "2026-06-27T22:47:52Z",
+  "pushedAt": "2026-08-21T06:27:30Z",
+  "status": "recent",
+  "role": "solo",
+  "share": 1,
+  "commits": 17,
+  "stars": 1,
+  "githubUrl": "https://github.com/undeemed/claude-config",
+  "score": 20
+ },
+ {
+  "repo": "undeemed/little-coder-rtk-rewrite",
+  "title": "little-coder-rtk-rewrite",
+  "summary": "little-coder extension: auto-route the bash tool through RTK (Rust Token Killer) for local, offline token compression",
+  "category": "Dev tools",
+  "origin": "personal",
+  "stack": [
+   "TypeScript",
+   "Docker"
+  ],
+  "langs": [
+   {
+    "name": "TypeScript",
+    "pct": 100
+   }
+  ],
+  "year": 2026,
+  "created": "2026-08-18T19:18:38Z",
+  "pushedAt": "2026-08-18T19:18:41Z",
+  "status": "recent",
+  "role": "solo",
+  "share": 1,
+  "commits": 1,
+  "stars": 0,
+  "githubUrl": "https://github.com/undeemed/little-coder-rtk-rewrite",
+  "score": 20
+ },
+ {
+  "repo": "undeemed/qwen-heretic-mtplx-speedup",
+  "title": "qwen-heretic-mtplx-speedup",
+  "summary": "Making Qwen3.8-9B-heretic 88% faster on Apple Silicon (MTPLX native-MTP spec decode), lossless.",
+  "category": "Dev tools",
+  "origin": "personal",
+  "stack": [
+   "Shell",
+   "MLX"
+  ],
+  "langs": [
+   {
+    "name": "Shell",
+    "pct": 100
+   }
+  ],
+  "year": 2026,
+  "created": "2026-08-18T18:49:53Z",
+  "pushedAt": "2026-08-18T18:50:21Z",
+  "status": "recent",
+  "role": "solo",
+  "share": 1,
+  "commits": 1,
+  "stars": 0,
+  "githubUrl": "https://github.com/undeemed/qwen-heretic-mtplx-speedup",
+  "score": 20
+ },
+ {
+  "repo": "shlawgathon/cloudconstruct",
+  "title": "cloudconstruct",
+  "summary": "System design (whiteboard) to IAC. Powered by Gemini.",
+  "category": "Agents & AI",
+  "origin": "hackathon",
+  "stack": [
+   "TypeScript",
+   "Kotlin"
+  ],
+  "langs": [
+   {
+    "name": "TypeScript",
+    "pct": 52
+   },
+   {
+    "name": "Kotlin",
+    "pct": 45
+   },
+   {
+    "name": "CSS",
+    "pct": 2
+   }
+  ],
+  "year": 2025,
+  "created": "2025-11-08T17:26:05Z",
+  "pushedAt": "2025-11-09T02:55:12Z",
+  "status": "shipped",
+  "role": "team",
+  "share": 0.34,
+  "commits": 15,
+  "stars": 4,
+  "githubUrl": "https://github.com/shlawgathon/cloudconstruct",
+  "score": 19
+ },
+ {
+  "repo": "undeemed/ocd",
+  "title": "ocd",
+  "summary": "Claude Code plugin: zero-tolerance audit-and-fix pass for visual polish and code quality.",
+  "category": "Agents & AI",
+  "origin": "personal",
+  "stack": [
+   "JavaScript"
+  ],
+  "langs": [
+   {
+    "name": "JavaScript",
+    "pct": 82
+   },
+   {
+    "name": "HTML",
+    "pct": 18
+   }
+  ],
+  "year": 2026,
+  "created": "2026-07-02T12:36:47Z",
+  "pushedAt": "2026-07-13T03:41:41Z",
+  "status": "recent",
+  "role": "solo",
+  "share": 1,
+  "commits": 5,
+  "stars": 1,
+  "githubUrl": "https://github.com/undeemed/ocd",
+  "score": 19
+ },
+ {
+  "repo": "undeemed/Payless.chat",
+  "title": "Payless.chat",
+  "summary": "Survey-funded AI coding assistant IDE extension.",
+  "category": "Agents & AI",
+  "origin": "personal",
+  "stack": [
+   "TypeScript",
+   "PLpgSQL",
+   "Next.js",
+   "Supabase",
+   "PostgreSQL"
+  ],
+  "langs": [
+   {
+    "name": "TypeScript",
+    "pct": 90
+   },
+   {
+    "name": "PLpgSQL",
+    "pct": 8
+   },
+   {
+    "name": "CSS",
+    "pct": 2
+   }
+  ],
+  "year": 2025,
+  "created": "2025-11-30T01:33:57Z",
+  "pushedAt": "2025-12-14T03:26:18Z",
+  "status": "dormant",
+  "role": "solo",
+  "share": 0.98,
+  "commits": 50,
+  "stars": 2,
+  "homepage": "https://payless.chat",
+  "githubUrl": "https://github.com/undeemed/Payless.chat",
+  "score": 19
+ },
+ {
+  "repo": "undeemed/walkthrough-kit",
+  "title": "walkthrough-kit",
+  "summary": "Claude Code plugin: spoken walkthrough kits for code demos inside isolated grader sandboxes.",
+  "category": "Agents & AI",
+  "origin": "personal",
+  "stack": [],
+  "langs": [],
+  "year": 2026,
+  "created": "2026-07-02T12:57:12Z",
+  "pushedAt": "2026-07-13T03:41:40Z",
+  "status": "recent",
+  "role": "solo",
+  "share": 1,
+  "commits": 2,
+  "stars": 1,
+  "githubUrl": "https://github.com/undeemed/walkthrough-kit",
+  "score": 19
+ },
+ {
+  "repo": "shlawgathon/trenches",
+  "title": "trenches",
+  "summary": "A OpenEnv environment that trains agents to handle complex, adversarial multi-actor global crisis",
+  "category": "Agents & AI",
+  "origin": "hackathon",
+  "stack": [
+   "Python",
+   "TypeScript",
+   "Next.js",
+   "FastAPI",
+   "Docker"
+  ],
+  "langs": [
+   {
+    "name": "Python",
+    "pct": 63
+   },
+   {
+    "name": "TypeScript",
+    "pct": 36
+   },
+   {
+    "name": "CSS",
+    "pct": 1
+   }
+  ],
+  "year": 2026,
+  "created": "2026-03-06T19:50:43Z",
+  "pushedAt": "2026-03-09T21:26:58Z",
+  "status": "shipped",
+  "role": "lead",
+  "share": 0.68,
+  "commits": 86,
+  "stars": 0,
+  "homepage": "https://trenches-peach.vercel.app",
+  "githubUrl": "https://github.com/shlawgathon/trenches",
+  "score": 17
+ },
+ {
+  "repo": "shlawgathon/pulse",
+  "title": "pulse",
+  "summary": "UI/UX Testing, Reimagined",
+  "category": "Web apps",
+  "origin": "hackathon",
+  "stack": [
+   "TypeScript",
+   "Python",
+   "Next.js",
+   "React",
+   "FastAPI"
+  ],
+  "langs": [
+   {
+    "name": "TypeScript",
+    "pct": 52
+   },
+   {
+    "name": "Python",
+    "pct": 43
+   },
+   {
+    "name": "JavaScript",
+    "pct": 5
+   },
+   {
+    "name": "CSS",
+    "pct": 1
+   }
+  ],
+  "year": 2026,
+  "created": "2026-01-31T18:38:42Z",
+  "pushedAt": "2026-02-01T03:59:05Z",
+  "status": "shipped",
+  "role": "team",
+  "share": 0.33,
+  "commits": 20,
+  "stars": 3,
+  "githubUrl": "https://github.com/shlawgathon/pulse",
+  "score": 16
+ },
+ {
+  "repo": "undeemed/SEC-Tracker",
+  "title": "SEC-Tracker",
+  "summary": "SEC filing feed RSS based Python CLI auto parser script with AI analysis via openrouter.ai.",
+  "category": "Finance",
+  "origin": "personal",
+  "stack": [
+   "Python",
+   "Docker"
+  ],
+  "langs": [
+   {
+    "name": "Python",
+    "pct": 100
+   }
+  ],
+  "year": 2025,
+  "created": "2025-08-17T23:10:13Z",
+  "pushedAt": "2026-01-30T06:46:31Z",
+  "status": "dormant",
+  "role": "solo",
+  "share": 1,
+  "commits": 22,
+  "stars": 3,
+  "githubUrl": "https://github.com/undeemed/SEC-Tracker",
+  "score": 16
+ },
+ {
+  "repo": "undeemed/yc-exporter",
+  "title": "yc-exporter",
+  "summary": "Chrome extension to export your Y Combinator application as Site, Markdown, or PDF",
+  "category": "Dev tools",
+  "origin": "personal",
+  "stack": [
+   "TypeScript",
+   "Bun"
+  ],
+  "langs": [
+   {
+    "name": "TypeScript",
+    "pct": 77
+   },
+   {
+    "name": "CSS",
+    "pct": 16
+   },
+   {
+    "name": "HTML",
+    "pct": 7
+   }
+  ],
+  "year": 2026,
+  "created": "2026-02-10T05:13:07Z",
+  "pushedAt": "2026-07-13T03:41:41Z",
+  "status": "recent",
+  "role": "solo",
+  "share": 1,
+  "commits": 5,
+  "stars": 0,
+  "githubUrl": "https://github.com/undeemed/yc-exporter",
+  "score": 16
+ },
+ {
+  "repo": "undeemed/FDE-Template",
+  "title": "FDE-Template",
+  "summary": "The operating console 42nights runs on — engagements, FDE workload, agent templates, pattern extraction, founder leverage.",
+  "category": "Web apps",
+  "origin": "personal",
+  "stack": [
+   "TypeScript",
+   "Next.js",
+   "React"
+  ],
+  "langs": [
+   {
+    "name": "TypeScript",
+    "pct": 93
+   },
+   {
+    "name": "Python",
+    "pct": 5
+   },
+   {
+    "name": "CSS",
+    "pct": 1
+   },
+   {
+    "name": "JavaScript",
+    "pct": 1
+   }
+  ],
+  "year": 2026,
+  "created": "2026-05-23T10:07:10Z",
+  "pushedAt": "2026-05-23T06:00:44Z",
+  "status": "dormant",
+  "role": "solo",
+  "share": 1,
+  "commits": 50,
+  "stars": 0,
+  "githubUrl": "https://github.com/undeemed/FDE-Template",
+  "score": 15
+ },
+ {
+  "repo": "shlawgathon/Computer-Use",
+  "title": "Computer-Use",
+  "summary": "Let AI steer your device.",
+  "category": "Agents & AI",
+  "origin": "hackathon",
+  "stack": [
+   "Rust",
+   "TypeScript",
+   "React"
+  ],
+  "langs": [
+   {
+    "name": "Rust",
+    "pct": 46
+   },
+   {
+    "name": "TypeScript",
+    "pct": 45
+   },
+   {
+    "name": "CSS",
+    "pct": 9
+   }
+  ],
+  "year": 2026,
+  "created": "2026-03-01T07:15:36Z",
+  "pushedAt": "2026-03-12T23:54:08Z",
+  "status": "shipped",
+  "role": "solo",
+  "share": 0.97,
+  "commits": 29,
+  "stars": 1,
+  "homepage": "https://www.loom.com/share/393d8f9aacda46e397fdb5f3e3427a64",
+  "githubUrl": "https://github.com/shlawgathon/Computer-Use",
+  "score": 14
+ },
+ {
+  "repo": "shlawgathon/pal",
+  "title": "pal",
+  "summary": "Your photography assistant. Automatically ingests 10,000s of DSLR images, categorizes them, semantically selects the highest quality picture in each …",
+  "category": "Agents & AI",
+  "origin": "hackathon",
+  "stack": [
+   "TypeScript"
+  ],
+  "langs": [
+   {
+    "name": "TypeScript",
+    "pct": 98
+   },
+   {
+    "name": "CSS",
+    "pct": 2
+   }
+  ],
+  "year": 2025,
+  "created": "2025-12-06T18:29:20Z",
+  "pushedAt": "2025-12-07T09:29:36Z",
+  "status": "shipped",
+  "role": "team",
+  "share": 0.1,
+  "commits": 7,
+  "stars": 2,
+  "githubUrl": "https://github.com/shlawgathon/pal",
+  "score": 12
+ },
+ {
+  "repo": "shlawgathon/ratetherobot",
+  "title": "ratetherobot",
+  "summary": "This project uses PostgreSQL with Drizzle ORM.",
+  "category": "Web apps",
+  "origin": "hackathon",
+  "stack": [
+   "TypeScript",
+   "Svelte",
+   "PostgreSQL",
+   "Docker"
+  ],
+  "langs": [
+   {
+    "name": "TypeScript",
+    "pct": 61
+   },
+   {
+    "name": "Svelte",
+    "pct": 37
+   },
+   {
+    "name": "CSS",
+    "pct": 1
+   }
+  ],
+  "year": 2026,
+  "created": "2026-06-20T12:41:21Z",
+  "pushedAt": "2026-06-21T01:34:55Z",
+  "status": "shipped",
+  "role": "solo",
+  "share": 1,
+  "commits": 21,
+  "stars": 0,
+  "githubUrl": "https://github.com/shlawgathon/ratetherobot",
+  "score": 10
+ },
+ {
+  "repo": "shlawgathon/wishlist",
+  "title": "wishlist",
+  "summary": "Peer to Peer Crypto Fundraising Platform built on Locus.",
+  "category": "Finance",
+  "origin": "hackathon",
+  "stack": [
+   "TypeScript",
+   "Next.js",
+   "React",
+   "MongoDB"
+  ],
+  "langs": [
+   {
+    "name": "TypeScript",
+    "pct": 99
+   }
+  ],
+  "year": 2025,
+  "created": "2025-11-15T18:55:23Z",
+  "pushedAt": "2025-12-13T22:25:33Z",
+  "status": "shipped",
+  "role": "solo",
+  "share": 0.91,
+  "commits": 20,
+  "stars": 0,
+  "homepage": "https://wishlist-costly.vercel.app",
+  "githubUrl": "https://github.com/shlawgathon/wishlist",
+  "score": 10
+ },
+ {
+  "repo": "undeemed/Reddit-Stocker",
+  "title": "Reddit-Stocker",
+  "summary": "Find the next trending stock on Reddit: Python CLI reddit stock stalker using openrouter.ai for free analysis.",
+  "category": "Agents & AI",
+  "origin": "personal",
+  "stack": [
+   "Python"
+  ],
+  "langs": [
+   {
+    "name": "Python",
+    "pct": 92
+   },
+   {
+    "name": "TypeScript",
+    "pct": 6
+   },
+   {
+    "name": "JavaScript",
+    "pct": 2
+   }
+  ],
+  "year": 2025,
+  "created": "2025-10-06T03:05:14Z",
+  "pushedAt": "2025-10-06T10:52:25Z",
+  "status": "dormant",
+  "role": "solo",
+  "share": 1,
+  "commits": 6,
+  "stars": 1,
+  "githubUrl": "https://github.com/undeemed/Reddit-Stocker",
+  "score": 9
+ },
+ {
+  "repo": "undeemed/Bulk-Autolisting-Agent",
+  "title": "Bulk-Autolisting-Agent",
+  "summary": "Upload images of multiple items you want to sell and automatically list it on to ebay in bulk, AI will analyze and group items in different angles in…",
+  "category": "Agents & AI",
+  "origin": "personal",
+  "stack": [
+   "TypeScript",
+   "Next.js",
+   "Bun"
+  ],
+  "langs": [
+   {
+    "name": "TypeScript",
+    "pct": 92
+   },
+   {
+    "name": "CSS",
+    "pct": 7
+   },
+   {
+    "name": "JavaScript",
+    "pct": 1
+   }
+  ],
+  "year": 2025,
+  "created": "2025-10-11T03:30:47Z",
+  "pushedAt": "2025-10-11T03:57:24Z",
+  "status": "dormant",
+  "role": "solo",
+  "share": 1,
+  "commits": 4,
+  "stars": 1,
+  "githubUrl": "https://github.com/undeemed/Bulk-Autolisting-Agent",
+  "score": 8
+ },
+ {
+  "repo": "undeemed/openfire",
+  "title": "openfire",
+  "summary": "AI agent that fires your employees so you don't have to feel bad about it",
+  "category": "Agents & AI",
+  "origin": "hackathon",
+  "stack": [
+   "TypeScript"
+  ],
+  "langs": [
+   {
+    "name": "TypeScript",
+    "pct": 97
+   },
+   {
+    "name": "JavaScript",
+    "pct": 1
+   },
+   {
+    "name": "CSS",
+    "pct": 1
+   },
+   {
+    "name": "Shell",
+    "pct": 1
+   }
+  ],
+  "year": 2026,
+  "created": "2026-04-25T20:31:52Z",
+  "pushedAt": "2026-04-26T02:23:35Z",
+  "status": "shipped",
+  "role": "lead",
+  "share": 0.7,
+  "commits": 7,
+  "stars": 0,
+  "githubUrl": "https://github.com/undeemed/openfire",
+  "score": 8
+ },
+ {
+  "repo": "undeemed/Portfilo",
+  "title": "Portfilo",
+  "summary": "List of WIP cool stuff that isn't code related!",
+  "category": "Research",
+  "origin": "research",
+  "stack": [],
+  "langs": [],
+  "year": 2025,
+  "created": "2025-08-22T06:51:18Z",
+  "pushedAt": "2025-11-29T23:32:39Z",
+  "status": "dormant",
+  "role": "solo",
+  "share": 0.93,
+  "commits": 26,
+  "stars": 0,
+  "githubUrl": "https://github.com/undeemed/Portfilo",
+  "score": 8
+ },
+ {
+  "repo": "undeemed/wooly",
+  "title": "wooly",
+  "summary": "CLI text → on-device Cactus → mobile-use phone automation.",
+  "category": "Web apps",
+  "origin": "personal",
+  "stack": [
+   "Python",
+   "Swift",
+   "FastAPI"
+  ],
+  "langs": [
+   {
+    "name": "Python",
+    "pct": 50
+   },
+   {
+    "name": "Swift",
+    "pct": 49
+   },
+   {
+    "name": "C",
+    "pct": 1
+   }
+  ],
+  "year": 2026,
+  "created": "2026-04-19T08:30:23Z",
+  "pushedAt": "2026-04-19T18:22:13Z",
+  "status": "dormant",
+  "role": "solo",
+  "share": 1,
+  "commits": 22,
+  "stars": 0,
+  "githubUrl": "https://github.com/undeemed/wooly",
+  "score": 4
+ },
+ {
+  "repo": "undeemed/SideQuest",
+  "title": "SideQuest",
+  "summary": "A marketplace for time-bound, location-bound activities.",
+  "category": "Web apps",
+  "origin": "personal",
+  "stack": [
+   "TypeScript",
+   "Next.js",
+   "MongoDB"
+  ],
+  "langs": [
+   {
+    "name": "TypeScript",
+    "pct": 95
+   },
+   {
+    "name": "CSS",
+    "pct": 5
+   },
+   {
+    "name": "JavaScript",
+    "pct": 1
+   }
+  ],
+  "year": 2025,
+  "created": "2025-12-03T22:48:44Z",
+  "pushedAt": "2025-12-13T22:26:52Z",
+  "status": "dormant",
+  "role": "lead",
+  "share": 0.75,
+  "commits": 3,
+  "stars": 0,
+  "homepage": "https://side-quest-virid.vercel.app",
+  "githubUrl": "https://github.com/undeemed/SideQuest",
+  "score": 3
+ },
+ {
+  "repo": "shlawgathon/CloudAGI",
+  "title": "CloudAGI",
+  "summary": "CloudAGI is a multi-service AI platform on the Nevermined marketplace.",
+  "category": "Web apps",
+  "origin": "hackathon",
+  "stack": [
+   "TypeScript",
+   "Next.js",
+   "Modal",
+   "Bun"
+  ],
+  "langs": [
+   {
+    "name": "TypeScript",
+    "pct": 98
+   },
+   {
+    "name": "CSS",
+    "pct": 1
+   },
+   {
+    "name": "Python",
+    "pct": 1
+   }
+  ],
+  "year": 2026,
+  "created": "2026-03-06T02:12:01Z",
+  "pushedAt": "2026-03-08T11:06:50Z",
+  "status": "shipped",
+  "role": "team",
+  "share": 0.32,
+  "commits": 15,
+  "stars": 0,
+  "githubUrl": "https://github.com/shlawgathon/CloudAGI",
+  "score": 2
+ },
+ {
+  "repo": "undeemed/webcam-test",
+  "title": "webcam-test",
+  "summary": "A Next.js prototype that uses MediaPipe Hands to track two hands simultaneously and Three.js to render floating UI windows that can be dragged via pi…",
+  "category": "Web apps",
+  "origin": "personal",
+  "stack": [
+   "TypeScript",
+   "Next.js"
+  ],
+  "langs": [
+   {
+    "name": "TypeScript",
+    "pct": 98
+   },
+   {
+    "name": "CSS",
+    "pct": 1
+   }
+  ],
+  "year": 2026,
+  "created": "2026-01-06T09:51:31Z",
+  "pushedAt": "2026-01-06T10:00:11Z",
+  "status": "dormant",
+  "role": "solo",
+  "share": 1,
+  "commits": 4,
+  "stars": 0,
+  "githubUrl": "https://github.com/undeemed/webcam-test",
+  "score": 0
+ }
+]

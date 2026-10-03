@@ -2,7 +2,9 @@ import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } fr
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react";
 import { RGBA, TextAttributes, type OptimizedBuffer } from "@opentui/core";
 import { profile } from "@/lib/profile";
-import { projects, type Project } from "@/lib/projects";
+import { getProjects, projects, type Project } from "@/lib/projects";
+import { parseHonours } from "@/lib/project-labels";
+import { COPY_GAP, COPY_PAD, TEX_CH, TEX_HEX, fillTones, texturePhase } from "@/lib/texture";
 import { ask, type ChatMessage } from "@/lib/ai";
 import { EXTERNAL_LINK_ARROW } from "@/lib/symbols";
 import type { LinkedInSnapshot } from "@/lib/linkedin";
@@ -30,10 +32,9 @@ import {
   DOWN_AMP,
   SPLASH_CAP,
 } from "@/lib/pond";
-import { ACCENT, BARS, ERR, FAINT, INK, MUTED, PANEL, SEL_BG, SEP, Stat, commas, compactNum, timeAgo, truncate } from "./ui";
+import { ACCENT, BARS, ERR, FAINT, HAIRLINE, INK, MUTED, PANEL, SEL_BG, SEP, Stat, commas, compactNum, timeAgo, truncate } from "./ui";
 import { NowPlaying, VolumeBar, type VolumeChannel } from "./music";
 
-const LIST_W = 30;
 const MAX_CHAT_INPUT_CHARS = 2_000;
 const MAX_CHAT_MESSAGES = 50;
 
@@ -85,13 +86,13 @@ function compactLanguage(value: string) {
 // measures as 2 wrapped rows (opentui edge case), overflowing tight column layouts
 function Rule({ w }: { w?: number }) {
   const { width } = useTerminalDimensions();
-  return <text bg={PANEL} fg={FAINT} wrapMode="none" style={{ height: 1 }}>{"-".repeat(Math.max(1, w ?? width))}</text>;
+  return <text bg={PANEL} fg={HAIRLINE} wrapMode="none" style={{ height: 1 }}>{"-".repeat(Math.max(1, w ?? width))}</text>;
 }
 // one multi-line text node (not one per row) with pinned size — cheap and layout-stable
 function VRule({ rows }: { rows: number }) {
   const n = Math.max(1, rows);
   return (
-    <text bg={PANEL} fg={FAINT} wrapMode="none" style={{ width: 1, height: n }}>
+    <text bg={PANEL} fg={HAIRLINE} wrapMode="none" style={{ width: 1, height: n }}>
       {Array.from({ length: n }, () => "╎").join("\n")}
     </text>
   );
@@ -131,28 +132,28 @@ const TECH: Record<string, { tag: string; col: string }> = {
   archlinux: { tag: "ARCH", col: "#3aa9e0" },
   raspberrypi: { tag: "RPI", col: "#e0507a" },
   nodejs: { tag: "NODE", col: "#83cd29" },
+  kotlin: { tag: "KT", col: "#b08cff" },
+  "c++": { tag: "C++", col: "#f06a92" },
+  c: { tag: "C", col: "#9aa4ad" },
+  go: { tag: "GO", col: "#4fc3d9" },
+  svelte: { tag: "SV", col: "#ff6a3d" },
+  stripe: { tag: "STR", col: "#8f86ff" },
+  mlx: { tag: "MLX", col: "#cccccc" },
+  modal: { tag: "MOD", col: "#7fe08a" },
+  dockerfile: { tag: "DK", col: "#6b8794" },
+  jupyternotebook: { tag: "IPY", col: "#e88a4c" },
 };
 function techTag(name: string) {
   const key = name.toLowerCase().replace(/[.\s_-]/g, "");
   return TECH[key] ?? { tag: name.slice(0, 3).toUpperCase(), col: MUTED };
 }
-// curated stack (mirrors the GitHub icon set), grouped for the About screen
-const MY_STACK: string[][] = [
-  ["Apple", "Arch Linux", "Raspberry Pi"],
-  ["Python", "Java", "JavaScript", "TypeScript", "Swift", "Rust"],
-  ["React", "Next.js", "TailwindCSS"],
-  ["Bun", "FastAPI", "PyTorch"],
-  ["PostgreSQL", "Supabase", "MongoDB", "Redis"],
-  ["AWS", "Google Cloud", "Azure", "Cloudflare"],
-  ["Docker", "Kubernetes", "Vim"],
-];
-const LOCATIONS = "SF, CA  |  Sugar Land, TX  |  Boston, MA";
+const LOCATIONS = ["Boston, MA", "SF, CA", "Sugar Land, TX"];
 
 // The one link primitive. <a href> emits OSC 8 when the terminal supports it (clickable),
 // otherwise renders as plain underlined accent text — never garbage.
-function LinkLine({ label, href, text, bg }: { label: string; href: string; text: string; bg?: string }) {
+function LinkLine({ label, href, text, bg, wrapMode }: { label: string; href: string; text: string; bg?: string; wrapMode?: "none" }) {
   return (
-    <text bg={bg ?? PANEL}>
+    <text bg={bg ?? PANEL} wrapMode={wrapMode}>
       <span fg={MUTED}>{label.padEnd(10)}</span>
       <a href={href} fg={ACCENT} attributes={TextAttributes.UNDERLINE}>
         {text}
@@ -186,7 +187,7 @@ const BOOT_LINES = [
   "$ ./xiao.sh --boot",
   "[ ok ] mount /home/jerry",
   "[ ok ] load profile.json",
-  "[ ok ] index projects (15)",
+  `[ ok ] index projects (${projects.length})`,
   "[ ok ] connect spotify",
   "[ ok ] start ai-search daemon",
   "[ ok ] render tui",
@@ -297,6 +298,7 @@ export default function App({
   const [transition, setTransition] = useState<Screen | null>(null);
   const [quitting, setQuitting] = useState(false); // boot-down log before the connection closes
   const [selected, setSelected] = useState(0);
+  const projectList = useProjects();
   const go = useCallback(
     (target: Screen) => {
       capture(distinctId, "nav", { screen: target });
@@ -343,6 +345,7 @@ export default function App({
   const pondMouse = useRef<{ x: number; y: number } | null>(null);
   const pondSplash = useRef<{ x: number; y: number; amp: number }[]>([]);
   const pondMoveN = useRef(0);
+  const pondCells = useRef(new Uint16Array(0)); // what KoiPond drew per cell, for CopyClearance
 
   // hide the terminal cursor (opentui Inputs draw their own caret)
   const renderer = useRenderer();
@@ -504,11 +507,11 @@ export default function App({
     }
     if (screen === "projects") {
       if (key.name === "up" || key.name === "k") {
-        setSelected((s) => (s - 1 + projects.length) % projects.length);
+        setSelected((s) => (s - 1 + projectList.length) % projectList.length);
         return;
       }
       if (key.name === "down" || key.name === "j") {
-        setSelected((s) => (s + 1) % projects.length);
+        setSelected((s) => (s + 1) % projectList.length);
         return;
       }
     }
@@ -543,13 +546,13 @@ export default function App({
     >
       {/* smaller koi on a phone so they don't bleed through the sparse, narrow content */}
       {/* ponytail: when pond=false the root mouse handlers above still fill these refs; harmless, capped at 64 */}
-      {pond && <KoiPond width={termW} height={termH} scale={narrow ? 0.5 : 1} mouseRef={pondMouse} splashRef={pondSplash} />}
+      {pond && <KoiPond width={termW} height={termH} scale={narrow ? 0.5 : 1} mouseRef={pondMouse} splashRef={pondSplash} cellsRef={pondCells} />}
       <box style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%", flexDirection: "column", zIndex: 1 }}>
         <Header screen={screen} />
         <box style={{ flexGrow: 1, flexDirection: "column" }}>
           {screen === "home" && <Home visit={visit} narrow={narrow} volume={volume} />}
-          {screen === "projects" && <Projects selected={selected} onSelect={setSelected} />}
-          {screen === "about" && <About linkedIn={linkedIn} />}
+          {screen === "projects" && <Projects list={projectList} selected={selected} onSelect={setSelected} />}
+          {screen === "about" && <About linkedIn={linkedIn} list={projectList} />}
           {screen === "chat" && (
             <Chat
               messages={messages}
@@ -563,8 +566,10 @@ export default function App({
             />
           )}
         </box>
-        <Footer screen={screen} chatActive={chatActive} narrow={narrow} onNav={go} />
+        <Footer screen={screen} chatActive={chatActive} onNav={go} />
       </box>
+      {/* the pond paints under every cell; this pass keeps it out of each line of copy */}
+      {pond && <CopyClearance cellsRef={pondCells} width={termW} height={termH} />}
       {picker && (
         <ResumePicker items={picker.items} index={picker.index} mode={picker.mode} width={termW} height={termH} />
       )}
@@ -622,14 +627,14 @@ function NavTab({ item, active, onNav }: { item: { key: string; screen: Screen }
 function Footer({
   screen,
   chatActive,
-  narrow,
   onNav,
 }: {
   screen: Screen;
   chatActive: boolean;
-  narrow: boolean;
   onNav: (s: Screen) => void;
 }) {
+  // nav tabs (~38) + the longest hint (34) + padding (4): below that the hint wraps onto the tabs
+  const showHint = useTerminalDimensions().width >= 76;
   const hint = chatActive
     ? "Enter send · Esc back"
     : screen === "projects"
@@ -646,7 +651,7 @@ function Footer({
             <NavTab key={n.key} item={n} active={n.screen === screen} onNav={onNav} />
           ))}
         </box>
-        {!narrow && <text bg={PANEL} fg={MUTED}>{hint}</text>}
+        {showHint && <text bg={PANEL} fg={MUTED}>{hint}</text>}
       </box>
     </box>
   );
@@ -661,6 +666,15 @@ const WATER_CREST = WATER_CREST_HEX.map(u16);
 const WATER_TROUGH = WATER_TROUGH_HEX.map(u16);
 const POND_BG = u16(POND_BG_HEX); // matches the terminal bg so the pond stays seamless
 const PAL_U16: Uint16Array[] = [new Uint16Array(4), ...PAL_HEX.slice(1).map(u16)];
+// the water texture (@/lib/texture): one glyph + hiring's gray per tone; hiring indexes its
+// shades by light level, which is 3 - tone
+const TEX_CP = TEX_CH.map((c) => c.codePointAt(0) ?? 32);
+const TEX_U16 = TEX_CH.map((_, tone) => u16(TEX_HEX[3 - tone]));
+// a terminal row is ~2.2 columns tall; the texture samples in column widths so its cells
+// come out round on screen
+const CELL_ROW_U = 2.2;
+// header (pad + title + rule) and footer (rule + nav + pad) rows stay texture-free
+const CHROME_ROWS = 3;
 
 // Full-screen koi pond behind all content; koi swim in from the edges, flee the cursor;
 // cursor/koi leave wave-sim ripples. Mouse + splashes are fed in from the App root.
@@ -673,12 +687,14 @@ export function KoiPond({
   scale = 1,
   mouseRef,
   splashRef,
+  cellsRef,
 }: {
   width: number;
   height: number;
   scale?: number;
   mouseRef: { current: { x: number; y: number } | null };
   splashRef: { current: { x: number; y: number; amp: number }[] };
+  cellsRef: { current: Uint16Array };
 }) {
   const W = Math.max(10, width);
   const H = Math.max(6, height);
@@ -688,6 +704,8 @@ export function KoiPond({
   if (!simRef.current || simRef.current.W !== W || simRef.current.H !== H || simRef.current.scale !== scale) {
     simRef.current = new PondSim(W, H, scale);
   }
+  const tonesRef = useRef(new Uint8Array(0));
+  const texClock = useRef({ now: 0, drawn: 0 });
 
   const draw = useCallback(
     (buffer: OptimizedBuffer, deltaMs: number) => {
@@ -712,6 +730,20 @@ export function KoiPond({
       const fgB = raw.fg;
       const bgB = raw.bg;
       const atB = raw.attributes;
+      // the texture drifts slowly (a full turn per minute), so 10 refreshes a second are
+      // indistinguishable from every frame at a tenth of the cost
+      const resized = tonesRef.current.length !== W * H;
+      if (resized) tonesRef.current = new Uint8Array(W * H);
+      const tones = tonesRef.current;
+      const clock = texClock.current;
+      clock.now += deltaMs;
+      if (resized || clock.now - clock.drawn >= 100) {
+        fillTones(tones, W, H, CELL_ROW_U, texturePhase(clock.now, false));
+        clock.drawn = clock.now;
+      }
+      // what the pond itself wrote per cell (glyph + colour, 4 u16 each), so CopyClearance
+      // can tell pond cells from copy; every pond glyph is a BMP codepoint
+      const drawn = cellsRef.current.length === bw * chRows * 4 ? cellsRef.current : (cellsRef.current = new Uint16Array(bw * chRows * 4));
       for (let y = 0; y < chRows; y += 1) {
         const rowOff = y * bw;
         const top0 = 2 * y * PW;
@@ -730,10 +762,20 @@ export function KoiPond({
             const bkt = waterBucket(v < 0 ? -v : v);
             cp = WATER_CP[bkt];
             col = v > 0 ? WATER_CREST[bkt] : WATER_TROUGH[bkt];
+            // calm water shows the texture, except in the header and footer rows
+            if (bkt === 0 && y >= CHROME_ROWS && y < chRows - CHROME_ROWS) {
+              const tone = tones[y * W + x];
+              cp = TEX_CP[tone];
+              col = TEX_U16[tone];
+            }
           }
           const ci = rowOff + x;
           const i4 = ci * 4;
           chB[ci] = cp;
+          drawn[i4] = cp;
+          drawn[i4 + 1] = col[0];
+          drawn[i4 + 2] = col[1];
+          drawn[i4 + 3] = col[2];
           fgB[i4] = col[0];
           fgB[i4 + 1] = col[1];
           fgB[i4 + 2] = col[2];
@@ -746,11 +788,51 @@ export function KoiPond({
         }
       }
     },
-    [W, H, mouseRef, splashRef],
+    [W, H, mouseRef, splashRef, cellsRef],
   );
 
   // `live` keeps the renderer's frame loop running so renderAfter fires every frame
   return <box style={{ position: "absolute", left: 0, top: 0, width: W, height: H, zIndex: 0 }} live renderAfter={draw} />;
+}
+
+// Runs after the content has drawn, over the pond. Spaces inside a line of copy are
+// transparent, so whatever the pond drew there - a texture strand, a ripple, a koi fin -
+// would read as a typo between two words. As on the hiring page, each line of copy claims
+// its whole run: pond glyphs in gaps of up to COPY_GAP cells between copy (the screen's left
+// edge counts as copy, so the gutter before indented text stays clear too), and COPY_PAD
+// cells either side of it, are blanked. Copy is any cell the pond did not draw (glyph and
+// colour both differ from what KoiPond recorded), so a letter that happens to match a
+// texture glyph is never mistaken for water.
+export function CopyClearance({ cellsRef, width, height }: { cellsRef: { current: Uint16Array }; width: number; height: number }) {
+  const draw = useCallback(
+    (buffer: OptimizedBuffer) => {
+      const { char: chB, fg: fgB } = buffer.buffers;
+      const bw = buffer.width;
+      const pond = cellsRef.current;
+      const rows = Math.min(height, buffer.height, Math.floor(pond.length / (bw * 4)));
+      const cols = Math.min(width, bw);
+      const isPond = (ci: number) => {
+        const i4 = ci * 4;
+        return chB[ci] === pond[i4] && fgB[i4] === pond[i4 + 1] && fgB[i4 + 1] === pond[i4 + 2] && fgB[i4 + 2] === pond[i4 + 3];
+      };
+      const clear = (ci: number) => {
+        if (chB[ci] !== 32 && isPond(ci)) chB[ci] = 32;
+      };
+      for (let y = 0; y < rows; y += 1) {
+        const row = y * bw;
+        let last = -1; // the left edge
+        for (let x = 0; x < cols; x += 1) {
+          const ci = row + x;
+          if (chB[ci] === 32 || isPond(ci)) continue;
+          if (x - last - 1 <= COPY_GAP) for (let k = last + 1; k < x; k += 1) clear(row + k);
+          for (let k = Math.max(0, x - COPY_PAD); k <= Math.min(cols - 1, x + COPY_PAD); k += 1) clear(row + k);
+          last = x;
+        }
+      }
+    },
+    [cellsRef, width, height],
+  );
+  return <box style={{ position: "absolute", left: 0, top: 0, width, height, zIndex: 2 }} live renderAfter={draw} />;
 }
 
 // total visitors + live online (polled) on one row
@@ -969,144 +1051,417 @@ function ResumePicker({
   );
 }
 
-function ProjectItem({ title, active, index, onSelect }: { title: string; active: boolean; index: number; onSelect: (i: number) => void }) {
-  const label = truncate(title, LIST_W - 4);
+// ---- Projects (layout A: index + dossier) --------------------------------------------------
+// The project list starts on the bundled snapshot (synchronous, so the first paint never
+// waits) and swaps in the live one: the daily cron's copy via /api/projects in the browser,
+// the store over SSH.
+function useProjects(): Project[] {
+  const [list, setList] = useState<Project[]>(projects);
+  useEffect(() => {
+    let alive = true;
+    getProjects()
+      .then((live) => {
+        if (alive) setList(live);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return list;
+}
+
+// Every label here is auto-derived (src/lib/project-labels.ts). The index lists wins first
+// (newest win first), then one group per derived category, largest first; the dossier shows
+// the selected repo. Selection indexes the flattened group order.
+const INDEX_W = 34;
+type Group = { name: string; items: Project[] };
+function projectGroups(list: Project[]): Group[] {
+  const wins = list.filter((p) => p.award).sort((a, b) => (b.award?.at ?? "").localeCompare(a.award?.at ?? ""));
+  const byCat = new Map<string, Project[]>();
+  for (const p of list) if (!p.award) byCat.set(p.category, [...(byCat.get(p.category) ?? []), p]);
+  const cats = [...byCat].sort((a, b) => b[1].length - a[1].length).map(([name, items]) => ({ name: name.toUpperCase(), items }));
+  return [{ name: "WINS", items: wins }, ...cats].filter((g) => g.items.length > 0);
+}
+const ORIGIN_LABEL: Record<Project["origin"], string> = {
+  hackathon: "HACKATHON BUILD",
+  personal: "PERSONAL PROJECT",
+  research: "RESEARCH",
+  contrib: "CONTRIBUTOR",
+};
+const STATUS_MARK: Record<Project["status"], { ch: string; col: string }> = {
+  active: { ch: "●", col: ACCENT },
+  recent: { ch: "●", col: "#5f9e7c" },
+  shipped: { ch: "◆", col: MUTED },
+  dormant: { ch: "○", col: FAINT },
+  archived: { ch: "○", col: FAINT },
+};
+const yy = (p: Project) => `'${String(p.year).slice(2)}`;
+
+// language mix by bytes as one coloured bar, `w` cells wide (langs under 2% dropped)
+function LangBar({ p, w }: { p: Project; w: number }) {
+  const langs = p.langs.filter((l) => l.pct >= 2);
+  const sum = langs.reduce((a, l) => a + l.pct, 0) || 1;
+  let used = 0;
   return (
-    <box onMouseDown={() => onSelect(index)}>
-      <text bg={active ? SEL_BG : PANEL}>
-        <span fg={active ? ACCENT : FAINT}>{active ? " ▐▌ " : "    "}</span>
-        <span fg={active ? INK : MUTED}>{label.padEnd(LIST_W - 4)}</span>
-      </text>
+    <text bg={PANEL} wrapMode="none" style={{ height: 1 }}>
+      {langs.map((l, i) => {
+        const n = i === langs.length - 1 ? w - used : Math.max(1, Math.round((l.pct / sum) * w));
+        used += n;
+        return (
+          <span key={l.name} fg={techTag(l.name).col}>
+            {"━".repeat(Math.max(0, n))}
+          </span>
+        );
+      })}
+    </text>
+  );
+}
+
+function ProjectIndex({ groups, selected, width, rows, onSelect }: { groups: Group[]; selected: number; width: number; rows: number; onSelect: (i: number) => void }) {
+  type Row = { kind: "gap" } | { kind: "head"; name: string; n: number } | { kind: "item"; p: Project; i: number };
+  const all: Row[] = [];
+  let i = 0;
+  for (const g of groups) {
+    if (all.length) all.push({ kind: "gap" });
+    all.push({ kind: "head", name: g.name, n: g.items.length });
+    for (const p of g.items) all.push({ kind: "item", p, i: i++ });
+  }
+  // scroll window: keep the selection about a third of the way down
+  const at = all.findIndex((r) => r.kind === "item" && r.i === selected);
+  const start = Math.max(0, Math.min(at - Math.floor(rows / 3), all.length - rows));
+  const nameW = width - 12;
+  return (
+    <box style={{ width, flexDirection: "column", flexShrink: 0 }}>
+      {all.slice(start, start + rows).map((r, k) =>
+        r.kind === "gap" ? (
+          <box key={`g${k}`} style={{ height: 1 }} />
+        ) : r.kind === "head" ? (
+          <text key={`h${r.name}`} bg={PANEL}>
+            <span fg={MUTED}>{`  ${r.name}`}</span>
+            <span fg={FAINT}>{`  ${r.n}`}</span>
+          </text>
+        ) : (
+          <box key={r.p.repo} onMouseDown={() => onSelect(r.i)}>
+            <text bg={r.i === selected ? SEL_BG : PANEL} wrapMode="none">
+              <span fg={r.i === selected ? ACCENT : FAINT}>{r.i === selected ? " ▐▌ " : "    "}</span>
+              <span fg={r.i === selected ? INK : MUTED}>{truncate(r.p.title, nameW - 1).padEnd(nameW)}</span>
+              <span fg={r.p.award ? ACCENT : FAINT}>{`${r.p.award ? "★" : " "} ${yy(r.p)}`}</span>
+            </text>
+          </box>
+        ),
+      )}
     </box>
   );
 }
 
-function ProjectLinks({ p }: { p: Project }) {
-  // Full URLs as visible text: xterm's web-links addon only makes complete http(s) URLs
-  // clickable in the browser (opentui does not emit OSC 8 over the ws shim). href carries
-  // the same URL. LinkedIn post URLs are too long to show cleanly, so they're omitted here
-  // (the About screen covers LinkedIn).
-  return (
-    <box style={{ flexDirection: "column" }}>
-      <text bg={PANEL} fg={FAINT}>LINKS</text>
-      <LinkLine label="GitHub" href={p.githubUrl} text={p.githubUrl} />
-      {p.eventUrl && <LinkLine label="Event" href={p.eventUrl} text={p.eventUrl.split("?")[0]} />}
-    </box>
-  );
-}
-
-function ProjectDetail({ p, detailW }: { p: Project; detailW: number }) {
-  const top3 = p.highlight?.toLowerCase().includes("top 3");
+function ProjectDossier({ p, w, narrow, tight }: { p: Project; w: number; narrow: boolean; tight: boolean }) {
+  const st = STATUS_MARK[p.status];
+  const col2 = narrow || w < 52 ? 14 : 20;
+  // short terminal: drop the blank spacer rows, or yoga shrinks the text rows onto each other
+  const gap = tight ? 0 : 1;
+  // 64-79 cols: the dossier is under 40 cells; clip rows at the screen edge instead of wrapping them
+  // stacked on a short screen: clip instead of wrapping, or a wrapped row overprints the next
+  const wm = (narrow ? tight : w < 40) ? "none" : undefined;
   return (
     <box style={{ flexGrow: 1, flexDirection: "column", paddingLeft: 2, paddingRight: 2, paddingTop: 1 }}>
-      {p.highlight && <text bg={PANEL} fg={ACCENT}>{(top3 ? "★ " : "") + p.highlight.toUpperCase()}</text>}
-      <text bg={PANEL}>
+      {p.award ? (
+        <text bg={PANEL} wrapMode="none">
+          <span fg={ACCENT}>{truncate(`★ ${p.award.place} · ${p.award.event}`.toUpperCase(), w - 10)}</span>
+          <span fg={FAINT}>{`  ${p.award.when}`}</span>
+        </text>
+      ) : (
+        <text bg={PANEL} fg={FAINT}>
+          {ORIGIN_LABEL[p.origin]}
+        </text>
+      )}
+      <text bg={PANEL} wrapMode={wm}>
         <strong fg={INK}>{p.title}</strong>
+        <span fg={FAINT}>{`   ${p.repo.split("/")[0]}/`}</span>
       </text>
-      <box style={{ height: 1 }} />
-      <text bg={PANEL} fg={MUTED}>{p.summary}</text>
-      <box style={{ height: 1 }} />
-      <Rule w={detailW} />
-      <box style={{ height: 1 }} />
-      <text bg={PANEL}>
-        <span fg={FAINT}>STACK   </span>
-        {p.tags.map((t, i) => {
+      <box style={{ height: gap }} />
+      {wrapText(p.summary, w)
+        .slice(0, narrow && tight ? 2 : 3)
+        .map((line, i) => (
+          <text key={i} bg={PANEL} fg={MUTED}>
+            {line}
+          </text>
+        ))}
+      <box style={{ height: gap }} />
+      <Rule w={w} />
+      <box style={{ height: gap }} />
+      <text bg={PANEL} wrapMode={wm}>
+        <span fg={MUTED}>{"category  "}</span>
+        <span fg={INK}>{p.category.padEnd(col2)}</span>
+        <span fg={MUTED}>{"year  "}</span>
+        <span fg={INK}>{String(p.year)}</span>
+      </text>
+      <text bg={PANEL} wrapMode={wm}>
+        <span fg={MUTED}>{"role      "}</span>
+        <span fg={INK}>{`${p.role} · ${Math.round(p.share * 100)}%`.padEnd(col2)}</span>
+        <span fg={MUTED}>{"now   "}</span>
+        <span fg={st.col}>{`${st.ch} `}</span>
+        <span fg={INK}>{p.status}</span>
+      </text>
+      <text bg={PANEL} wrapMode={wm}>
+        <span fg={MUTED}>{"stack     "}</span>
+        {p.stack.slice(0, narrow ? 4 : 6).map((t) => {
           const { tag, col } = techTag(t);
-          return (
-            <span key={i} fg={col}>{`● ${tag}   `}</span>
-          );
+          return <span key={t} fg={col}>{`● ${tag}   `}</span>;
         })}
       </text>
-      <box style={{ height: 1 }} />
-      <ProjectLinks p={p} />
+      <box style={{ height: gap }} />
+      <LangBar p={p} w={w} />
+      <text bg={PANEL} wrapMode={wm}>
+        {p.langs.slice(0, narrow ? 2 : 4).map((l) => (
+          <span key={l.name}>
+            <span fg={techTag(l.name).col}>{"● "}</span>
+            <span fg={MUTED}>{`${l.name} `}</span>
+            <span fg={FAINT}>{`${l.pct}%   `}</span>
+          </span>
+        ))}
+      </text>
+      <box style={{ height: gap }} />
+      <LinkLine label="GitHub" href={p.githubUrl} text={p.githubUrl} wrapMode={wm} />
+      {p.eventUrl && <LinkLine label="Event" href={p.eventUrl} text={p.eventUrl.split("?")[0]} wrapMode={wm} />}
     </box>
   );
 }
 
-function Projects({ selected, onSelect }: { selected: number; onSelect: (i: number) => void }) {
-  const p = projects[selected];
+function Projects({ list, selected, onSelect }: { list: Project[]; selected: number; onSelect: (i: number) => void }) {
   const { width, height } = useTerminalDimensions();
   const narrow = width < 64;
   // header (pad+title+rule = 3) + footer (rule+nav+pad = 3): anything taller overflows the
   // screen and yoga flex-shrinks the HEADER by the excess — the title row silently vanishes
   const bodyRows = Math.max(4, height - 6);
-  const detailW = Math.max(20, width - (narrow ? 4 : LIST_W + 6));
-
-  // narrow: stack the (tappable) list above the selected project's detail
+  const groups = projectGroups(list);
+  const order = groups.flatMap((g) => g.items);
+  if (order.length === 0) return null;
+  const sel = Math.min(selected, order.length - 1);
+  const p = order[sel];
   if (narrow) {
+    // rows left under the header/footer chrome and the top pad; the full dossier is 20 rows, the
+    // tight one (no spacers, 2-line summary) 13. Overflow makes yoga shrink text rows onto each other.
+    const avail = height - 7;
+    const tight = avail < 25;
     return (
       <box style={{ flexDirection: "column", flexGrow: 1, paddingTop: 1 }}>
-        <text bg={PANEL} fg={FAINT}>{"  PROJECTS"}</text>
-        {projects.map((project, i) => (
-          <ProjectItem key={project.title} title={project.title} active={i === selected} index={i} onSelect={onSelect} />
-        ))}
-        <ProjectDetail p={p} detailW={detailW} />
+        <ProjectIndex groups={groups} selected={sel} width={width} rows={Math.max(3, Math.min(9, avail - (tight ? 13 : 20)))} onSelect={onSelect} />
+        <ProjectDossier p={p} w={width - 4} narrow tight={tight} />
       </box>
     );
   }
-
   return (
     <box style={{ flexDirection: "row", flexGrow: 1 }}>
-      <box style={{ width: LIST_W, flexDirection: "column", paddingTop: 1 }}>
-        <text bg={PANEL} fg={FAINT}>{"  PROJECTS"}</text>
-        <box style={{ height: 1 }} />
-        {projects.map((project, i) => (
-          <ProjectItem key={project.title} title={project.title} active={i === selected} index={i} onSelect={onSelect} />
-        ))}
+      <box style={{ flexDirection: "column", paddingTop: 1, flexShrink: 0 }}>
+        <ProjectIndex groups={groups} selected={sel} width={INDEX_W} rows={bodyRows - 1} onSelect={onSelect} />
       </box>
-
       <VRule rows={bodyRows} />
-
-      <ProjectDetail p={p} detailW={detailW} />
+      <ProjectDossier p={p} w={Math.min(88, width - INDEX_W - 6)} narrow={false} tight={bodyRows < 22} />
     </box>
   );
 }
 
-function About({ linkedIn }: { linkedIn: LinkedInSnapshot }) {
-  const lp = linkedIn.profile;
-  const languages = [
-    ...new Set(((linkedIn.sections ?? []).find((s) => s.title === "Languages")?.items ?? []).map(compactLanguage)),
-  ].filter(Boolean);
-  // bg={PANEL} per line: an opaque strip behind each row of text so the koi pond shows
-  // *around* the words (between rows, in the margins) but never bleeds through the spaces.
+// ---- About (layout A: profile + wins) -------------------------------------------------------
+// Everything is derived: wins from LinkedIn honours, "building" from the most recently
+// pushed personal repo, "writes in" from each repo's code languages weighted by his commits.
+// Name banner letterforms (own drawing): 5-row full blocks wide, 2-row half blocks on phones.
+// ponytail: only the letters of his name are drawn; add glyphs if the name changes.
+const BANNER_BIG: Record<string, string[]> = {
+  J: ["     ██", "     ██", "     ██", "██   ██", " █████ "],
+  E: ["███████", "██     ", "█████  ", "██     ", "███████"],
+  R: ["██████ ", "██   ██", "██████ ", "██   ██", "██   ██"],
+  Y: ["██    ██", " ██  ██ ", "  ████  ", "   ██   ", "   ██   "],
+  X: ["██   ██", " ██ ██ ", "  ███  ", " ██ ██ ", "██   ██"],
+  I: ["██", "██", "██", "██", "██"],
+  A: [" █████ ", "██   ██", "███████", "██   ██", "██   ██"],
+  O: [" ██████ ", "██    ██", "██    ██", "██    ██", " ██████ "],
+  " ": ["  ", "  ", "  ", "  ", "  "],
+};
+const BANNER_SMALL: Record<string, string[]> = {
+  J: ["  █", "█▄█"], E: ["█▀▀", "██▄"], R: ["█▀█", "█▀▄"], Y: ["█▄█", " █ "], X: ["▀▄▀", "█ █"],
+  I: ["█", "█"], A: ["▄▀█", "█▀█"], O: ["█▀█", "█▄█"], " ": ["  ", "  "],
+};
+const BANNER_SHADE = ["#e9ece9", "#d6ddd8", "#c2ccc6", "#adbab3", "#98a89f"];
+function banner(name: string, big: boolean): string[] {
+  const font = big ? BANNER_BIG : BANNER_SMALL;
+  const rows = font[" "].map(() => "");
+  for (const ch of name.toUpperCase()) {
+    const g = font[ch] ?? font[" "];
+    for (let r = 0; r < rows.length; r += 1) rows[r] += `${g[r]} `;
+  }
+  return rows;
+}
+const NON_CODE = ["HTML", "CSS", "SCSS", "Dockerfile", "Makefile", "Procfile", "Batchfile", "Jupyter Notebook", "MDX", "Nix"];
+function writesIn(list: Project[]): { name: string; pct: number }[] {
+  const acc = new Map<string, number>();
+  for (const p of list) {
+    const code = p.langs.filter((l) => !NON_CODE.includes(l.name));
+    const sum = code.reduce((a, l) => a + l.pct, 0) || 1;
+    for (const l of code) acc.set(l.name, (acc.get(l.name) ?? 0) + (l.pct / sum) * p.commits);
+  }
+  const total = [...acc.values()].reduce((a, b) => a + b, 0) || 1;
+  return [...acc].map(([name, v]) => ({ name, pct: (v / total) * 100 })).sort((a, b) => b.pct - a.pct);
+}
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function birthday(dob?: string): string {
+  const [m, d, y] = (dob ?? "").split("/").map(Number);
+  return m && d && y ? `${MONTHS[m - 1]} ${d}, ${y}` : "";
+}
+
+function Field({ k, children }: { k: string; children: ReactNode }) {
   return (
-    <box style={{ flexDirection: "column", paddingLeft: 2, paddingTop: 1 }}>
-      <text bg={PANEL}>
-        <strong fg={INK}>{lp.name}</strong>
-        {typeof lp.followerCount === "number" ? <span fg={MUTED}>{`   ${lp.followerCount} followers`}</span> : null}
-      </text>
-      <box style={{ height: 1 }} />
-      <text bg={PANEL}>
-        <span fg={MUTED}>education   </span>
-        <span fg={INK}>{profile.education}</span>
-      </text>
-      <text bg={PANEL}>
-        <span fg={MUTED}>location    </span>
-        <span fg={INK}>{LOCATIONS}</span>
-      </text>
-      {languages.length > 0 && (
-        <text bg={PANEL}>
-          <span fg={MUTED}>languages   </span>
-          <span fg={INK}>{truncate(languages.join(" · "), 58)}</span>
-        </text>
-      )}
-      <box style={{ height: 1 }} />
-      <text bg={PANEL} fg={MUTED}>SOCIALS</text>
-      <LinkLine label="LinkedIn" href={profile.links.linkedin} text={profile.links.linkedin} bg={PANEL} />
-      <LinkLine label="GitHub" href={profile.links.github} text={profile.links.github} bg={PANEL} />
-      <LinkLine label="Email" href={`mailto:${profile.links.email}`} text={profile.links.email} bg={PANEL} />
-      <box style={{ height: 1 }} />
-      <text bg={PANEL} fg={FAINT}>STACK</text>
-      {MY_STACK.map((group, gi) => (
-        <text key={gi} bg={PANEL}>
-          {group.map((t, ti) => {
-            const { tag, col } = techTag(t);
-            return (
-              <span key={ti} fg={col}>{`● ${tag}  `}</span>
-            );
-          })}
+    <text bg={PANEL}>
+      <span fg={MUTED}>{k.padEnd(12)}</span>
+      {children}
+    </text>
+  );
+}
+function FieldLink({ k, href, text }: { k: string; href: string; text: string }) {
+  return (
+    <Field k={k}>
+      <a href={href} fg={ACCENT} attributes={TextAttributes.UNDERLINE}>
+        {text}
+      </a>
+      <span fg={FAINT}> {EXTERNAL_LINK_ARROW}</span>
+    </Field>
+  );
+}
+
+function About({ linkedIn, list }: { linkedIn: LinkedInSnapshot; list: Project[] }) {
+  const { width, height } = useTerminalDimensions();
+  const narrow = width < 80;
+  const wins = parseHonours((linkedIn.sections ?? []).find((s) => s.title === "Honors & Awards")?.items ?? []);
+  const languages = [...new Set(((linkedIn.sections ?? []).find((s) => s.title === "Languages")?.items ?? []).map(compactLanguage))].filter(Boolean);
+  // as many languages as fit on the line, no ellipsis
+  let speaks = "";
+  for (const l of languages) {
+    const next = speaks ? `${speaks} · ${l}` : l;
+    if (next.length <= (narrow ? width - 4 : 78) - 12) speaks = next;
+  }
+  const building = list.filter((p) => p.origin === "personal").sort((a, b) => b.pushedAt.localeCompare(a.pushedAt))[0];
+  const stacked = width < 148;
+  const extraRows = (building ? 1 : 0) + (wins[0] ? 1 : 0) + (profile.dob ? 1 : 0) + (speaks ? 1 : 0);
+  // rows left for the two lists: screen minus header/footer (6), padding, the left column when
+  // stacked, and the fixed rows of the right column (2 headings + the gap between); overflow overprints rows
+  const budgetFor = (nameRows: number, gap: number, linkRows: number) =>
+    height - 6 - 1 - (stacked ? nameRows + 3 + linkRows + 4 * gap + extraRows + gap : 0) - 2 - gap;
+  // stacked on a short screen: first the 2-row banner instead of the 5-row one, then drop the spacer
+  // rows and put the links on one line, so at least a few wins and languages always fit
+  const compact = narrow || (stacked && budgetFor(5, 1, 3) < 4);
+  const tight = stacked && budgetFor(2, 1, 3) < 4;
+  const gap = tight ? 0 : 1;
+  const name = banner(profile.name, !compact);
+  const tagline = `${profile.role.toLowerCase()}  ·  ${profile.education.split(" ")[0].toLowerCase()}  ·  ${profile.location.split(",")[0].toLowerCase()}`;
+  const short = (place: string) => (place.startsWith("1st") ? "1st" : place === "Track Prize" ? "prize" : place.split(" · ")[0]);
+  const barW = narrow ? Math.max(8, width - 4 - 22) : 30;
+  const budget = budgetFor(name.length, gap, tight ? 1 : 3);
+  const nWrites = Math.max(0, Math.min(narrow ? 4 : 6, Math.floor(budget / 2)));
+  const nWins = Math.max(0, Math.min(narrow ? 5 : 8, budget - nWrites));
+  const writesShown = writesIn(list).slice(0, nWrites);
+  const bare = (u: string) => u.replace(/^https:\/\/(www\.)?/, "").replace(/\/$/, "");
+  // tight: github · linkedin · email on one row, as many as fit the width
+  let linkW = narrow ? 0 : 12;
+  const tightLinks = [
+    { href: profile.links.github, text: bare(profile.links.github) },
+    { href: profile.links.linkedin, text: bare(profile.links.linkedin) },
+    { href: `mailto:${profile.links.email}`, text: profile.links.email },
+  ].filter((l) => (linkW += l.text.length + 3) - 3 <= width - 4);
+  const left = (
+    <box style={{ flexDirection: "column", width: narrow ? undefined : 78, flexShrink: 0 }}>
+      {name.map((row, i) => (
+        <text key={i} bg={PANEL} fg={BANNER_SHADE[name.length > 2 ? i : i * 2]} wrapMode="none">
+          {row}
         </text>
       ))}
+      <box style={{ height: gap }} />
+      <text bg={PANEL} fg={ACCENT}>
+        {narrow ? profile.role.toLowerCase() : tagline}
+      </text>
+      <box style={{ height: gap }} />
+      <text bg={PANEL} fg={MUTED}>
+        NOW
+      </text>
+      {building && (
+        <Field k="building">
+          <span fg={INK}>{`${building.title} — pushed ${timeAgo(building.pushedAt)}`}</span>
+        </Field>
+      )}
+      {wins[0] && (
+        <Field k="last win">
+          <span fg={ACCENT}>{`${short(wins[0].place)} · ${wins[0].event.replace(/ Hackathon$/i, "")}`}</span>
+        </Field>
+      )}
+      {profile.dob && (
+        <Field k="birthday">
+          <span fg={INK}>{birthday(profile.dob)}</span>
+        </Field>
+      )}
+      <box style={{ height: gap }} />
+      <Field k="based">
+        <span fg={INK}>{(narrow ? LOCATIONS.map((l) => l.split(",")[0]) : LOCATIONS).join(narrow ? " · " : "  ·  ")}</span>
+      </Field>
+      {speaks && (
+        <Field k="speaks">
+          <span fg={INK}>{speaks}</span>
+        </Field>
+      )}
+      <box style={{ height: gap }} />
+      {tight ? (
+        <text bg={PANEL} wrapMode="none">
+          {tightLinks.map((l, i) => (
+            <span key={l.text}>
+              <span fg={FAINT}>{i === 0 ? (narrow ? "" : "links".padEnd(12)) : "   "}</span>
+              <a href={l.href} fg={ACCENT} attributes={TextAttributes.UNDERLINE}>{l.text}</a>
+            </span>
+          ))}
+        </text>
+      ) : (
+        <>
+          <FieldLink k="github" href={profile.links.github} text={bare(profile.links.github)} />
+          <FieldLink k="linkedin" href={profile.links.linkedin} text={bare(profile.links.linkedin)} />
+          <FieldLink k="email" href={`mailto:${profile.links.email}`} text={profile.links.email} />
+        </>
+      )}
+    </box>
+  );
+  const right = (
+    <box style={{ flexDirection: "column", paddingLeft: stacked ? 0 : 6, paddingTop: stacked ? gap : 0 }}>
+      {nWins > 0 && (
+        <text bg={PANEL}>
+          <span fg={MUTED}>WINS</span>
+          <span fg={FAINT}>{`  ${wins.length}`}</span>
+        </text>
+      )}
+      {wins.slice(0, nWins).map((h) => (
+        <text key={h.text} bg={PANEL} wrapMode="none">
+          <span fg={FAINT}>{`${h.when.slice(0, 3).toUpperCase()} ${h.when.slice(-2)}  `}</span>
+          <span fg={h.place.startsWith("1st") ? ACCENT : INK}>{short(h.place).padEnd(7)}</span>
+          <span fg={MUTED}>{truncate(h.event.replace(/ Hackathon$/i, ""), narrow ? width - 20 : 40)}</span>
+        </text>
+      ))}
+      {nWrites > 0 && (
+        <>
+          {nWins > 0 && <box style={{ height: gap }} />}
+          <text bg={PANEL}>
+            <span fg={MUTED}>WRITES IN</span>
+            <span fg={FAINT}>{"  by his commits"}</span>
+          </text>
+        </>
+      )}
+      {writesShown.map((l) => (
+        <text key={l.name} bg={PANEL} wrapMode="none">
+          <span fg={MUTED}>{l.name.padEnd(12)}</span>
+          <span fg={techTag(l.name).col}>{"▆".repeat(Math.max(1, Math.round((l.pct / (writesShown[0]?.pct || 1)) * barW)))}</span>
+          <span fg={FAINT}>{` ${Math.round(l.pct)}%`}</span>
+        </text>
+      ))}
+    </box>
+  );
+  return (
+    <box style={{ flexDirection: stacked ? "column" : "row", paddingLeft: 2, paddingTop: 1 }}>
+      {left}
+      {right}
     </box>
   );
 }

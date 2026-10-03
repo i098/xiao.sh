@@ -1,7 +1,7 @@
 // Platform-neutral request handler for the browser product: the HTML shell, the /api/*
 // data endpoints and the SEO files. Shared by the Bun server (server/web.ts) and the
 // Cloudflare Worker (server/worker.ts); /app.js and the favicon are served by each host.
-import { SEO_HEAD, SEO_BODY, robotsTxt, sitemapXml, llmsTxt } from "./seo";
+import { SEO_HEAD, seoBody, robotsTxt, sitemapXml, llmsTxt } from "./seo";
 import { getSpotify } from "@/lib/spotify";
 import { getPreviewUrl } from "@/lib/preview";
 import { getLinkedInSnapshot } from "@/lib/linkedin";
@@ -10,6 +10,7 @@ import { capture } from "@/lib/analytics";
 import { ask, type ChatMessage } from "@/lib/ai";
 import { recordQuestion } from "@/lib/questions";
 import { getGitHub } from "@/lib/github";
+import { getProjects } from "@/lib/projects";
 import { beat, liveCount } from "@/lib/presence";
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -30,7 +31,7 @@ const APP_HTML = `<!doctype html>
      never composite above the text); cell size comes from --cw/--lh (metrics.ts) */
   #root{position:absolute;inset:0;z-index:1;color:#e9ece9;font:14px/19px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
         -webkit-font-smoothing:antialiased;}
-  #root input::placeholder{color:#2c3531;opacity:1;}
+  #root input::placeholder{color:#56645d;opacity:1;}
   #root a{cursor:pointer;}
   /* 16px stops iOS auto-zoom on focus; the grid still sizes rows via --lh */
   @media (pointer: coarse){ #root input{font-size:16px;} }
@@ -56,7 +57,7 @@ const APP_HTML = `<!doctype html>
 </style>
 </head>
 <body>
-${SEO_BODY}
+<!--seo-body-->
 <div id="app"><div id="root"></div></div>
 <div class="crt-vignette"></div>
 <div class="crt-tint"></div>
@@ -142,6 +143,8 @@ export async function handle(req: Request, ip: string, waitUntil: (p: Promise<un
     return json({ url: id ? await getPreviewUrl(id, name, artist) : null });
   }
   if (url.pathname === "/api/github") return json(await getGitHub());
+  // the daily cron's labels (KV) or the committed snapshot; the browser twin reads this
+  if (url.pathname === "/api/projects") return json(await getProjects());
   if (url.pathname === "/api/chat" && req.method === "POST") {
     if (!chatAllowed(ip)) return json({ error: "rate limited — try again in a minute" }, 429);
     const body = (await req.json().catch(() => null)) as { messages?: unknown } | null;
@@ -188,6 +191,9 @@ export async function handle(req: Request, ip: string, waitUntil: (p: Promise<un
   // SEO/GEO endpoints
   if (url.pathname === "/robots.txt") return new Response(robotsTxt(), { headers: { "content-type": "text/plain; charset=utf-8" } });
   if (url.pathname === "/sitemap.xml") return new Response(sitemapXml(), { headers: { "content-type": "application/xml; charset=utf-8" } });
-  if (url.pathname === "/llms.txt") return new Response(llmsTxt(), { headers: { "content-type": "text/plain; charset=utf-8" } });
-  return new Response(APP_HTML, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+  if (url.pathname === "/llms.txt") return new Response(llmsTxt(await getProjects()), { headers: { "content-type": "text/plain; charset=utf-8" } });
+  // the SEO block lists the same projects the app shows, so it follows the cron too
+  const seo = seoBody(await getProjects());
+  const html = APP_HTML.replace("<!--seo-body-->", () => seo);
+  return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
 }

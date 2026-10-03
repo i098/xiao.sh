@@ -1054,10 +1054,9 @@ function extractTechnologies(posts: RawPost[], extraSources: string[] = []) {
   ].join("\n");
 
   const found = TECHNOLOGY_PATTERNS.filter((item) => item.regex.test(corpus)).map((item) => item.label);
-  const projectTags = projects.flatMap((project) => project.tags);
-  const normalizedCorpus = corpus.toLowerCase();
+  const projectTags = projects.flatMap((project) => project.stack);
   const matchedProjectTags = projectTags
-    .filter((tag) => normalizedCorpus.includes(tag.toLowerCase()))
+    .filter((tag) => new RegExp(`(^|[^a-z0-9])${tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^a-z0-9])`, "i").test(corpus))
     .filter((tag) => !/^llama$/i.test(tag))
     .filter((tag) => !/^fireworks(\s*ai|\.js)?$/i.test(tag));
 

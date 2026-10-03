@@ -18,5 +18,7 @@
   // .data on Cloudflare: one KV entry per .data-relative file (visits.json, spotify.json, ...)
   "kv_namespaces": [{ "binding": "DATA", "id": "66790071a1af402fbe5045014f12d3ae" }],
   "vars": { "NODE_ENV": "production", "PUBLIC_ORIGIN": "https://xiao.sh" },
+  // daily re-derive of the project labels into KV (server/worker.ts `scheduled`)
+  "triggers": { "crons": ["17 9 * * *"] },
   "observability": { "enabled": true }
 }
