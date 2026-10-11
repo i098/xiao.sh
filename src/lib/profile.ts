@@ -35,7 +35,7 @@ export const profile: Profile = {
     "Bun",
   ],
   links: {
-    github: "https://github.com/undeemed",
+    github: "https://github.com/i098",
     linkedin: "https://www.linkedin.com/in/xiaojerry/",
     email: "jerry@xiao.sh",
   },

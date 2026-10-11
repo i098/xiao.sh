@@ -23,7 +23,7 @@ export type Project = {
   stars: number;
   award?: Award;
   homepage?: string;
-  githubUrl: string;
+  githubUrl?: string;
   linkedinUrl?: string;
   eventUrl?: string;
   score: number;

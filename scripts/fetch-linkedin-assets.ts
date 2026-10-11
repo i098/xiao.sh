@@ -142,7 +142,7 @@ async function main() {
   await mkdir(OUTPUT_ROOT, { recursive: true });
 
   const linkedinProjects = projects.filter(
-    (project): project is (typeof project) & { linkedinUrl: string } => Boolean(project.linkedinUrl),
+    (project): project is (typeof project) & { linkedinUrl: string; githubUrl: string } => Boolean(project.linkedinUrl && project.githubUrl),
   );
 
   const manifest: ProjectAssetManifest[] = [];
