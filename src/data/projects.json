@@ -1,6 +1,6 @@
 [
  {
-  "repo": "undeemed/kimi-k3-in-rust",
+  "repo": "i098/kimi-k3-in-rust",
   "title": "kimi-k3-in-rust",
   "summary": "CPU inference for Kimi K3, a 2.78T-parameter MoE LLM, in pure Rust.",
   "category": "ML systems",
@@ -35,7 +35,7 @@
   "score": 92
  },
  {
-  "repo": "undeemed/get-shit-done-codex",
+  "repo": "i098/get-shit-done-codex",
   "title": "get-shit-done-codex",
   "summary": "A light-weight and powerful meta-prompting, context engineering and spec-driven development system for Codex, originally by TÂCHES.",
   "category": "Dev tools",
@@ -373,7 +373,7 @@
   "eventUrl": "https://cerebralvalley.ai/e/bfl-hackathon?tab=guest-list"
  },
  {
-  "repo": "undeemed/sanctum",
+  "repo": "i098/sanctum",
   "title": "sanctum",
   "summary": "Open-source ambient AI and shared agent memory.",
   "category": "Agents & AI",
@@ -417,8 +417,8 @@
   "score": 43
  },
  {
-  "repo": "undeemed/Code-Factory",
-  "title": "Code-Factory",
+  "repo": "i098/Crewship",
+  "title": "Crewship",
   "summary": "The fleet that never sleeps.",
   "category": "Infra",
   "origin": "personal",
@@ -467,7 +467,7 @@
   "share": 0.94,
   "commits": 107,
   "stars": 2,
-  "githubUrl": "https://github.com/i098/Code-Factory",
+  "githubUrl": "https://github.com/i098/Crewship",
   "score": 42
  },
  {
@@ -518,7 +518,7 @@
   "eventUrl": "https://cerebralvalley.ai/e/2025-ted-ai-hackathon?tab=guest-list"
  },
  {
-  "repo": "undeemed/firstmate",
+  "repo": "i098/firstmate",
   "title": "firstmate",
   "summary": "Talk to one agent. Ship with a crew.",
   "category": "Agents & AI",
@@ -556,7 +556,7 @@
   "score": 39
  },
  {
-  "repo": "undeemed/fpsmaxxing",
+  "repo": "i098/fpsmaxxing",
   "title": "fpsmaxxing",
   "summary": "Open-source Rust control plane for AI-driven FPS, frame-time, latency, thermals, and system performance tuning.",
   "category": "Hardware & games",
@@ -582,7 +582,7 @@
   "score": 37
  },
  {
-  "repo": "undeemed/Jcyber",
+  "repo": "i098/Jcyber",
   "title": "Jcyber",
   "summary": "Agent-driven bug bounty / pentest framework: one gated chain over five systems (Caido, HexStrike, Jev, Memgraph, TencentDB, Prometheus)",
   "category": "Agents & AI",
@@ -653,7 +653,7 @@
   "score": 33
  },
  {
-  "repo": "undeemed/a2d",
+  "repo": "i098/a2d",
   "title": "a2d",
   "summary": "Convert open-weight autoregressive LLMs into diffusion language models - locally, with one command",
   "category": "ML systems",
@@ -684,7 +684,7 @@
   "score": 32
  },
  {
-  "repo": "undeemed/tetanus",
+  "repo": "i098/tetanus",
   "title": "tetanus",
   "summary": "A Rust agent harness that runs the DeepSeek Harness turn flow, headlessly and offline by default.",
   "category": "Web apps",
@@ -713,7 +713,7 @@
   "score": 32
  },
  {
-  "repo": "undeemed/wuwa-toolkit",
+  "repo": "i098/wuwa-toolkit",
   "title": "wuwa-toolkit",
   "summary": "WuWa Toolkit for Wuthering Waves: RTXMFG 3x/4x/5x/6x via GPU-name spoofing + tweaks, optional neural rendering, resolution controls, setup and uninst…",
   "category": "ML systems",
@@ -796,7 +796,7 @@
   "score": 31
  },
  {
-  "repo": "undeemed/jev-mod",
+  "repo": "i098/jev-mod",
   "title": "jev-mod",
   "summary": "Jev-powered Discord moderation bot. Configure TypeSafe Jev rules, bring your own API key, and self-host on Cloudflare or Docker.",
   "category": "Agents & AI",
@@ -874,7 +874,7 @@
   "score": 26
  },
  {
-  "repo": "undeemed/manifest",
+  "repo": "i098/manifest",
   "title": "manifest",
   "summary": "Kill learned helplessness in AI coding agents.",
   "category": "Agents & AI",
@@ -910,7 +910,7 @@
   "score": 25
  },
  {
-  "repo": "undeemed/mlx-dllm",
+  "repo": "i098/mlx-dllm",
   "title": "mlx-dllm",
   "summary": "MLX inference runtime for a2d masked-diffusion language models (Apple Silicon)",
   "category": "ML systems",
@@ -937,7 +937,7 @@
   "score": 25
  },
  {
-  "repo": "undeemed/pr-standup",
+  "repo": "i098/pr-standup",
   "title": "pr-standup",
   "summary": "Agent skill: build a dated, date-grouped open-PR standup board and Discord paste from live GitHub data",
   "category": "Agents & AI",
@@ -963,7 +963,7 @@
   "score": 25
  },
  {
-  "repo": "undeemed/windows-95-web-designer",
+  "repo": "i098/windows-95-web-designer",
   "title": "windows-95-web-designer",
   "summary": "Windows 95 web design skill, extracted from curiositech/windags-skills for customization.",
   "category": "Dev tools",
@@ -982,7 +982,7 @@
   "score": 25
  },
  {
-  "repo": "undeemed/manual-metal",
+  "repo": "i098/manual-metal",
   "title": "manual-metal",
   "summary": "Full-body VR-tracker teleoperation of humanoid robots, simulation first",
   "category": "Hardware & games",
@@ -1012,7 +1012,7 @@
   "score": 21
  },
  {
-  "repo": "undeemed/claude-config",
+  "repo": "i098/claude-config",
   "title": "claude-config",
   "summary": "Personal Claude Code config snapshot — for fast setup on a fresh machine.",
   "category": "Agents & AI",
@@ -1052,7 +1052,7 @@
   "score": 20
  },
  {
-  "repo": "undeemed/little-coder-rtk-rewrite",
+  "repo": "i098/little-coder-rtk-rewrite",
   "title": "little-coder-rtk-rewrite",
   "summary": "little-coder extension: auto-route the bash tool through RTK (Rust Token Killer) for local, offline token compression",
   "category": "Dev tools",
@@ -1079,7 +1079,7 @@
   "score": 20
  },
  {
-  "repo": "undeemed/qwen-heretic-mtplx-speedup",
+  "repo": "i098/qwen-heretic-mtplx-speedup",
   "title": "qwen-heretic-mtplx-speedup",
   "summary": "Making Qwen3.8-9B-heretic 88% faster on Apple Silicon (MTPLX native-MTP spec decode), lossless.",
   "category": "Dev tools",
@@ -1141,7 +1141,7 @@
   "score": 19
  },
  {
-  "repo": "undeemed/ocd",
+  "repo": "i098/ocd",
   "title": "ocd",
   "summary": "Claude Code plugin: zero-tolerance audit-and-fix pass for visual polish and code quality.",
   "category": "Agents & AI",
@@ -1171,7 +1171,7 @@
   "score": 19
  },
  {
-  "repo": "undeemed/Payless.chat",
+  "repo": "i098/Payless.chat",
   "title": "Payless.chat",
   "summary": "Survey-funded AI coding assistant IDE extension.",
   "category": "Agents & AI",
@@ -1209,7 +1209,7 @@
   "score": 19
  },
  {
-  "repo": "undeemed/walkthrough-kit",
+  "repo": "i098/walkthrough-kit",
   "title": "walkthrough-kit",
   "summary": "Claude Code plugin: spoken walkthrough kits for code demos inside isolated grader sandboxes.",
   "category": "Agents & AI",
@@ -1309,7 +1309,7 @@
   "score": 16
  },
  {
-  "repo": "undeemed/SEC-Tracker",
+  "repo": "i098/SEC-Tracker",
   "title": "SEC-Tracker",
   "summary": "SEC filing feed RSS based Python CLI auto parser script with AI analysis via openrouter.ai.",
   "category": "Finance",
@@ -1335,7 +1335,7 @@
   "score": 16
  },
  {
-  "repo": "undeemed/yc-exporter",
+  "repo": "i098/yc-exporter",
   "title": "yc-exporter",
   "summary": "Chrome extension to export your Y Combinator application as Site, Markdown, or PDF",
   "category": "Dev tools",
@@ -1370,7 +1370,7 @@
   "score": 16
  },
  {
-  "repo": "undeemed/FDE-Template",
+  "repo": "i098/FDE-Template",
   "title": "FDE-Template",
   "summary": "The operating console 42nights runs on — engagements, FDE workload, agent templates, pattern extraction, founder leverage.",
   "category": "Web apps",
@@ -1543,7 +1543,7 @@
   "score": 10
  },
  {
-  "repo": "undeemed/Reddit-Stocker",
+  "repo": "i098/Reddit-Stocker",
   "title": "Reddit-Stocker",
   "summary": "Find the next trending stock on Reddit: Python CLI reddit stock stalker using openrouter.ai for free analysis.",
   "category": "Agents & AI",
@@ -1576,7 +1576,7 @@
   "score": 9
  },
  {
-  "repo": "undeemed/Bulk-Autolisting-Agent",
+  "repo": "i098/Bulk-Autolisting-Agent",
   "title": "Bulk-Autolisting-Agent",
   "summary": "Upload images of multiple items you want to sell and automatically list it on to ebay in bulk, AI will analyze and group items in different angles in…",
   "category": "Agents & AI",
@@ -1611,7 +1611,7 @@
   "score": 8
  },
  {
-  "repo": "undeemed/openfire",
+  "repo": "i098/openfire",
   "title": "openfire",
   "summary": "AI agent that fires your employees so you don't have to feel bad about it",
   "category": "Agents & AI",
@@ -1648,7 +1648,7 @@
   "score": 8
  },
  {
-  "repo": "undeemed/Portfilo",
+  "repo": "i098/Portfilo",
   "title": "Portfilo",
   "summary": "List of WIP cool stuff that isn't code related!",
   "category": "Research",
@@ -1666,7 +1666,7 @@
   "score": 8
  },
  {
-  "repo": "undeemed/wooly",
+  "repo": "i098/wooly",
   "title": "wooly",
   "summary": "CLI text → on-device Cactus → mobile-use phone automation.",
   "category": "Web apps",
@@ -1701,7 +1701,7 @@
   "score": 4
  },
  {
-  "repo": "undeemed/SideQuest",
+  "repo": "i098/SideQuest",
   "title": "SideQuest",
   "summary": "A marketplace for time-bound, location-bound activities.",
   "category": "Web apps",
@@ -1774,7 +1774,7 @@
   "score": 2
  },
  {
-  "repo": "undeemed/webcam-test",
+  "repo": "i098/webcam-test",
   "title": "webcam-test",
   "summary": "A Next.js prototype that uses MediaPipe Hands to track two hands simultaneously and Three.js to render floating UI windows that can be dragged via pi…",
   "category": "Web apps",

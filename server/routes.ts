@@ -26,32 +26,28 @@ const APP_HTML = `<!doctype html>
 <meta name="theme-color" content="#030c0d" />
 <style>
   html,body{margin:0;height:100%;background:#030c0d;overflow:hidden;}
-  #app{position:fixed;top:0;left:0;right:0;height:100dvh;box-sizing:border-box;filter:brightness(1.08) saturate(1.18);}
+  #app{position:fixed;top:0;left:0;right:0;height:100dvh;box-sizing:border-box;}
+  /* no filter on #app: the brightness(1.08) saturate(1.18) grade is baked into the colours
+     (web/dom/tone.ts), because a viewport-sized filter re-runs on every pond frame (slow at 4K) */
   /* #root paints the text grid over the pond canvas (explicit z-index: the canvas must
      never composite above the text); cell size comes from --cw/--lh (metrics.ts) */
-  #root{position:absolute;inset:0;z-index:1;color:#e9ece9;font:14px/19px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  #root{position:absolute;inset:0;z-index:1;color:#fbfffb;font:14px/19px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
         -webkit-font-smoothing:antialiased;}
-  #root input::placeholder{color:#56645d;opacity:1;}
+  #root input::placeholder{color:#5b6d64;opacity:1;}
   #root a{cursor:pointer;}
   /* 16px stops iOS auto-zoom on focus; the grid still sizes rows via --lh */
   @media (pointer: coarse){ #root input{font-size:16px;} }
+  /* static scanlines: the old 4s opacity "flicker" moved their strength by ~2%, invisible, but
+     re-composited the whole viewport ten times a second (very slow at 4K) */
   .crt-overlay{
     position:fixed;inset:0;z-index:10;pointer-events:none;
     background:repeating-linear-gradient(0deg, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 1px, rgba(0,0,0,0.32) 2px);
-    animation:crt-flicker 4s steps(40) infinite;
   }
+  /* vignette + faint green tint in one layer; a normal-blend tint instead of mix-blend-mode:
+     screen, which forced a full-viewport backdrop read every frame */
   .crt-vignette{
     position:fixed;inset:0;z-index:9;pointer-events:none;
-    background:radial-gradient(140% 140% at 50% 50%, rgba(0,0,0,0) 65%, rgba(0,0,0,0.45) 100%);
-  }
-  .crt-tint{
-    position:fixed;inset:0;z-index:9;pointer-events:none;
-    background:rgba(67,240,138,0.04);
-    mix-blend-mode:screen;
-  }
-  @keyframes crt-flicker{0%,100%{opacity:1}48%{opacity:0.97}50%{opacity:0.94}52%{opacity:0.98}}
-  @media (prefers-reduced-motion: reduce){
-    .crt-overlay{animation:none}
+    background:radial-gradient(140% 140% at 50% 50%, rgba(0,0,0,0) 65%, rgba(0,0,0,0.45) 100%), rgba(67,240,138,0.04);
   }
   .seo-content{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
 </style>
@@ -60,7 +56,6 @@ const APP_HTML = `<!doctype html>
 <!--seo-body-->
 <div id="app"><div id="root"></div></div>
 <div class="crt-vignette"></div>
-<div class="crt-tint"></div>
 <div class="crt-overlay"></div>
 <script type="module" src="/app.js"></script>
 </body>

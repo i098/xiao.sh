@@ -4,10 +4,13 @@
 // values translate to calc() expressions and the layout stays cell-quantized.
 import { useEffect, useRef, type CSSProperties, type PointerEvent as RPointerEvent, type ReactNode } from "react";
 import { getMetrics } from "./metrics";
+import { tone } from "./tone";
 
 const xc = (v: number | string) => (typeof v === "number" ? `calc(${v} * var(--cw))` : v);
 const yc = (v: number | string) => (typeof v === "number" ? `calc(${v} * var(--lh))` : v);
 
+// colour-valued style keys; see tone.ts
+const COLOR_KEYS = new Set(["color", "background", "backgroundColor", "borderColor"]);
 const X_KEYS = new Set(["width", "minWidth", "maxWidth", "left", "right", "paddingLeft", "paddingRight", "marginLeft", "marginRight"]);
 const Y_KEYS = new Set(["height", "minHeight", "maxHeight", "top", "bottom", "paddingTop", "paddingBottom", "marginTop", "marginBottom"]);
 
@@ -22,7 +25,7 @@ function cellStyle(s: TuiStyle, base: CSSProperties): CSSProperties {
     else if (Y_KEYS.has(k)) (o as Record<string, unknown>)[k] = yc(v as number | string);
     else if (k === "padding") o.padding = `${yc(v as number)} ${xc(v as number)}`;
     else if (k === "margin") o.margin = `${yc(v as number)} ${xc(v as number)}`;
-    else (o as Record<string, unknown>)[k] = v; // flex*, alignItems, justifyContent, position, zIndex, backgroundColor, ...
+    else (o as Record<string, unknown>)[k] = COLOR_KEYS.has(k) && typeof v === "string" ? tone(v) : v; // flex*, alignItems, justifyContent, position, zIndex, backgroundColor, ...
   }
   return o;
 }
@@ -67,7 +70,7 @@ function Box({ style, border, borderColor, onMouseDown, onMouseMove, onMouseOut,
   // sizes a growing box by unwrapped max-content instead. Basis 0 restores Yoga behavior.
   if (style?.flexGrow && style.width == null && style.height == null && style.flexBasis == null) css.flexBasis = "0%";
   if (border) {
-    css.border = `1px solid ${borderColor ?? "#2c3531"}`;
+    css.border = `1px solid ${tone(borderColor ?? "#2c3531")}`;
     css.borderRadius = "6px"; // borderStyle:"rounded" is the only style in the tree
   }
   if (onMouseDown) css.cursor = "pointer";
@@ -116,8 +119,8 @@ function Text({ style, fg, bg, wrapMode, attributes, children }: TextProps) {
     whiteSpace: wrapMode === "none" ? "pre" : "pre-wrap",
     overflow: wrapMode === "none" || style?.height != null ? "hidden" : undefined,
   });
-  if (fg) css.color = fg;
-  if (bg && bg !== "transparent") css.background = bg;
+  if (fg) css.color = tone(fg);
+  if (bg && bg !== "transparent") css.background = tone(bg);
   if (attributes && attributes & 8) css.textDecoration = "underline";
   return <div style={css}>{stretchBlocks(children)}</div>;
 }
@@ -127,7 +130,7 @@ function Text({ style, fg, bg, wrapMode, attributes, children }: TextProps) {
 // bg'd spans become line-height-tall blocks.
 function cellBg(css: CSSProperties, bg?: string) {
   if (!bg || bg === "transparent") return;
-  css.background = bg;
+  css.background = tone(bg);
   css.display = "inline-block";
   css.height = "var(--lh)";
   css.verticalAlign = "top";
@@ -152,7 +155,7 @@ function stretchBlocks(children: TextProps["children"]): TextProps["children"] {
 
 function Span({ fg, bg, attributes, children }: TextProps) {
   const css: CSSProperties = {};
-  if (fg) css.color = fg;
+  if (fg) css.color = tone(fg);
   cellBg(css, bg);
   if (attributes && attributes & 8) css.textDecoration = "underline";
   return <span style={css}>{stretchBlocks(children)}</span>;
@@ -160,14 +163,14 @@ function Span({ fg, bg, attributes, children }: TextProps) {
 
 function Strong({ fg, bg, children }: TextProps) {
   const css: CSSProperties = { fontWeight: 600 };
-  if (fg) css.color = fg;
+  if (fg) css.color = tone(fg);
   cellBg(css, bg);
   return <span style={css}>{children}</span>;
 }
 
 function A({ href, fg, attributes, children }: TextProps & { href?: string }) {
   const css: CSSProperties = { textDecoration: attributes && attributes & 8 ? "underline" : "none" };
-  if (fg) css.color = fg;
+  if (fg) css.color = tone(fg);
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" style={css}>
       {children}
@@ -200,7 +203,7 @@ function Input({ style, focused, placeholder, value, onInput, onSubmit }: InputP
     margin: 0,
     font: "inherit",
     color: "inherit",
-    caretColor: "#43f08a",
+    caretColor: tone("#43f08a"),
     height: "var(--lh)",
   });
   // the placeholder is REAL text in the grid (a native ::placeholder is styled shadow
@@ -217,7 +220,7 @@ function Input({ style, focused, placeholder, value, onInput, onSubmit }: InputP
         }}
       />
       {!value && placeholder ? (
-        <span style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none", whiteSpace: "pre", color: "#56645d" }}>{placeholder}</span>
+        <span style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none", whiteSpace: "pre", color: tone("#56645d") }}>{placeholder}</span>
       ) : null}
     </span>
   );

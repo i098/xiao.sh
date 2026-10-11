@@ -171,13 +171,13 @@ export function texturePhase(now: number, reduced: boolean): number {
 /** One tone per cell (0 strand, 1 edge, 2 halo, 3 ground) for a `c` x `r` grid at phase
  *  `t`; `rowU` is one row's height in column widths. Colour a tone with TEX_HEX[3 - tone]
  *  (hiring indexes its shades by light level) and draw it as TEX_CH[tone]. */
-export function fillTones(out: Uint8Array, c: number, r: number, rowU: number, t: number): void {
+export function fillTones(out: Uint8Array, c: number, r: number, rowU: number, t: number, fromRow = 0, toRow = r): void {
   cols = c;
   rows = r;
   const scx = cols * 0.5;
   const scy = rows * 0.5 * rowU;
   prepareTexture(t, 0, rowU, scx, scy, Math.sqrt(scx * scx + scy * scy));
-  for (let y = 0; y < rows; y += 1)
+  for (let y = fromRow; y < toRow; y += 1)
     for (let x = 0; x < cols; x += 1) {
       // rounded to float32, the precision hiring's band edges were tuned at
       const dist = Math.fround(texAt(x, y));
