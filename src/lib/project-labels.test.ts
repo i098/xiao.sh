@@ -70,6 +70,15 @@ test("role counts GitHub accounts when fetched; bot commits do not make a solo r
   expect(Object.fromEntries(projects.map((p) => [p.repo, p.role]))).toEqual({ "me/solo": "solo", "team/led": "lead", "team/joined": "team" });
 });
 
+test("role counts a former login's commits, and his own when the old account is gone from contributors", () => {
+  const raws = [
+    repo({ repo: "team/old-login", commits: 100, mine: 50, contributors: [{ login: "was-me", n: 50 }, { login: "a", n: 50 }] }),
+    repo({ repo: "team/deleted", commits: 100, mine: 60, contributors: [{ login: "a", n: 30 }, { login: "b", n: 10 }] }),
+  ];
+  const { projects } = deriveProjects({ raws, login: "me", aliases: ["was-me"], hackathonOrgs: ["team"], honours, narrative: [], overrides: {}, now: NOW });
+  expect(Object.fromEntries(projects.map((p) => [p.repo, [p.role, p.share]]))).toEqual({ "team/old-login": ["lead", 0.5], "team/deleted": ["lead", 0.6] });
+});
+
 test("role falls back on the GraphQL share when the contributors fetch failed", () => {
   const { projects } = derive([
     repo({ repo: "team/minor", commits: 70, mine: 7 }),

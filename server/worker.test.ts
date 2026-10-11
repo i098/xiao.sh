@@ -49,7 +49,7 @@ test(".data (visit counter) survives a Worker restart through KV", async () => {
 // what a fresh load shows - /api/projects (which the browser twin reads), the SEO block and
 // llms.txt - with the same bundle, no rebuild or redeploy.
 test("project labels in KV win over the bundled snapshot", async () => {
-  const fresh = [{ ...snapshot[0], repo: "undeemed/kv-sentinel", title: "KV Sentinel", summary: "Written by the daily refresh." }];
+  const fresh = [{ ...snapshot[0], repo: "i098/kv-sentinel", title: "KV Sentinel", summary: "Written by the daily refresh." }];
   const put = Bun.spawnSync(
     ["node_modules/.bin/wrangler", "kv", "key", "put", "projects.json", JSON.stringify(fresh), "--binding", "DATA", "--local", "--persist-to", persist],
     { env },

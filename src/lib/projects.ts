@@ -38,15 +38,21 @@ export async function getProjects(): Promise<Project[]> {
 export async function buildProjects(token: string): Promise<DeriveResult> {
   const login = profile.links.github.match(/github\.com\/([^/?#]+)/i)?.[1] ?? "";
   const li = await getLinkedInSnapshot();
-  return deriveProjects({
-    raws: await collectRepos(token, login, PROJECT_SOURCES.hackathonOrgs, PROJECT_SOURCES.repos),
+  const derived = deriveProjects({
+    raws: await collectRepos(token, login, PROJECT_SOURCES.hackathonOrgs, PROJECT_SOURCES.repos, PROJECT_SOURCES.authorEmails),
     login,
+    aliases: PROJECT_SOURCES.formerLogins,
     hackathonOrgs: PROJECT_SOURCES.hackathonOrgs,
     honours: parseHonours(li.sections?.find((s) => s.title === "Honors & Awards")?.items ?? []),
     narrative: [...(li.profile.narrative ?? []), ...(li.profile.achievements ?? [])],
     overrides: PROJECT_OVERRIDES,
     now: Date.now(),
   });
+  // Repos GitHub can no longer list (private, or on the old account) keep their committed
+  // entry instead of vanishing from the site; the committed githubUrl rules decide the link.
+  const seen = new Set([...derived.projects.map((p) => p.repo), ...derived.skipped.map((s) => s.repo)]);
+  const kept = (snapshot as Project[]).filter((p) => !seen.has(p.repo));
+  return { ...derived, projects: [...derived.projects, ...kept].sort((a, b) => b.score - a.score || a.repo.localeCompare(b.repo)) };
 }
 
 /** The daily cron: re-derive and store, so getProjects() serves fresh labels. */

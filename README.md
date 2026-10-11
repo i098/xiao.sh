@@ -145,7 +145,7 @@ The older self-hosted setup exposed the browser side through a cloudflared tunne
 ## Editing content and data
 
 - Profile: `src/lib/profile.ts` (name, role, education, location, skills, links).
-- Projects: nothing to hand-label. `bun run sync:projects` re-derives every label from GitHub and LinkedIn honours into the committed snapshot `src/data/projects.json` and prints the rule behind each label; on Cloudflare the daily cron does the same into KV. Fix a wrong label with one line in `src/data/project-overrides.ts` (`set` any field, `hide`, or `show`); overrides also apply whenever projects are read, so an edit is live on the next deploy. The same list feeds the AI context and the SEO surface.
+- Projects: nothing to hand-label. `bun run sync:projects` re-derives every label from GitHub and LinkedIn honours into the committed snapshot `src/data/projects.json` and prints the rule behind each label; on Cloudflare the daily cron does the same into KV. Repos GitHub cannot list (private ones, or the retired account's) keep their committed entry, so the refresh never drops a project; the committed `githubUrl` (absent where no public repo exists) decides the link. Fix a wrong label with one line in `src/data/project-overrides.ts` (`set` any field, `hide`, or `show`); overrides also apply whenever projects are read, so an edit is live on the next deploy. The same list feeds the AI context and the SEO surface.
 - LinkedIn: the loader is `src/lib/linkedin.ts` and the fallback snapshot is `src/data/linkedin-about.json`.
 
 Refresh the LinkedIn data (needs Playwright, plus auth cookies for the full profile):

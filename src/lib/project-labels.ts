@@ -67,7 +67,7 @@ const REPO_FIELDS = `
   r3: object(expression: "HEAD:Readme.md") { ... on Blob { text } }
   defaultBranchRef { target { ... on Commit {
     all: history(first: 0) { totalCount }
-    mine: history(first: 0, author: { id: $uid }) { totalCount }
+    mine: history(first: 0, author: { emails: $emails }) { totalCount }
   } } }`;
 
 type GqlRepo = {
@@ -113,9 +113,14 @@ function toRaw(g: GqlRepo): RawRepo {
   };
 }
 
-/** Every public repo owned by `login` or `orgs`, plus `repos` ("owner/name"). */
-export async function collectRepos(token: string, login: string, orgs: string[], repos: string[]): Promise<RawRepo[]> {
-  const { user } = await gql<{ user: { id: string } }>(token, "query($l:String!){ user(login:$l){ id } }", { l: login });
+/**
+ * Every public repo owned by `login` or `orgs`, plus `repos` ("owner/name"). "His" commits are
+ * matched by author email, not account id: `extraEmails` carries the old account's addresses,
+ * so history written before the account moved still counts.
+ */
+export async function collectRepos(token: string, login: string, orgs: string[], repos: string[], extraEmails: string[] = []): Promise<RawRepo[]> {
+  const { user } = await gql<{ user: { databaseId: number } }>(token, "query($l:String!){ user(login:$l){ databaseId } }", { l: login });
+  const emails = [...extraEmails, `${user.databaseId}+${login}@users.noreply.github.com`];
   const out: RawRepo[] = [];
   const owners: [string, string][] = [["user", login], ...orgs.map((o): [string, string] => ["organization", o])];
   for (const [kind, name] of owners) {
@@ -124,9 +129,9 @@ export async function collectRepos(token: string, login: string, orgs: string[],
     do {
       const data: Record<string, { repositories: Page }> = await gql(
         token,
-        `query($n:String!,$after:String,$uid:ID!){ ${kind}(login:$n){ repositories(first:25, after:$after, privacy:PUBLIC${affil}){
+        `query($n:String!,$after:String,$emails:[String!]!){ ${kind}(login:$n){ repositories(first:25, after:$after, privacy:PUBLIC${affil}){
           pageInfo { hasNextPage endCursor } nodes { ${REPO_FIELDS} } } } }`,
-        { n: name, after, uid: user.id },
+        { n: name, after, emails },
       );
       const page = data[kind].repositories;
       out.push(...page.nodes.map(toRaw));
@@ -137,8 +142,8 @@ export async function collectRepos(token: string, login: string, orgs: string[],
     const [owner, name] = full.split("/");
     const data = await gql<{ repository: GqlRepo | null }>(
       token,
-      `query($o:String!,$n:String!,$uid:ID!){ repository(owner:$o, name:$n){ ${REPO_FIELDS} } }`,
-      { o: owner, n: name, uid: user.id },
+      `query($o:String!,$n:String!,$emails:[String!]!){ repository(owner:$o, name:$n){ ${REPO_FIELDS} } }`,
+      { o: owner, n: name, emails },
     );
     if (data.repository) out.push(toRaw(data.repository));
   }
@@ -322,6 +327,7 @@ export function applyOverrides(list: Project[], overrides: Record<string, Projec
 export type DeriveInput = {
   raws: RawRepo[];
   login: string;
+  aliases?: string[]; // his earlier logins: contributor rows under them count as him
   hackathonOrgs: string[];
   honours: Honour[];
   narrative: string[]; // LinkedIn post text, used to match awards for sure
@@ -334,7 +340,8 @@ export type DeriveResult = {
   why: Record<string, string[]>; // per repo: the rule behind each label, for the sync log
 };
 
-export function deriveProjects({ raws, login, hackathonOrgs, honours, narrative, overrides, now }: DeriveInput): DeriveResult {
+export function deriveProjects({ raws, login, aliases = [], hackathonOrgs, honours, narrative, overrides, now }: DeriveInput): DeriveResult {
+  const me = new Set([login, ...aliases].map((l) => l.toLowerCase()));
   const kept = raws.filter((r) => (!exclusion(r, login) || overrides[r.repo]?.show) && !overrides[r.repo]?.hide);
   const skipped = raws.filter((r) => !kept.includes(r)).map((r) => ({ repo: r.repo, why: overrides[r.repo]?.hide ? "override: hide" : exclusion(r, login) ?? "" }));
   const awards = assignAwards(kept, honours, narrative, hackathonOrgs);
@@ -348,15 +355,17 @@ export function deriveProjects({ raws, login, hackathonOrgs, honours, narrative,
     // share and role count GitHub accounts only (REST contributors) when fetched, so agent or
     // unlinked commit authors do not turn a solo repo into a "team" one
     const people = r.contributors?.filter((c) => c.n > 0) ?? [];
+    // a renamed or deleted account drops out of REST /contributors: count his commits back in
+    if (people.length && !people.some((c) => me.has(c.login.toLowerCase())) && r.mine > 0) people.push({ login, n: r.mine });
     const peopleTotal = people.reduce((a, c) => a + c.n, 0);
-    const mineCounted = people.find((c) => c.login.toLowerCase() === login.toLowerCase())?.n ?? r.mine;
+    const mineCounted = people.find((c) => me.has(c.login.toLowerCase()))?.n ?? r.mine;
     const share = peopleTotal ? mineCounted / peopleTotal : r.commits ? r.mine / r.commits : 0;
     const top = [...people].sort((a, b) => b.n - a.n)[0];
     const role: Project["role"] = r.fork
       ? "contributor"
       : share >= 0.9 || people.length === 1
         ? "solo"
-        : (top ? top.login.toLowerCase() === login.toLowerCase() : share >= 0.5)
+        : (top ? me.has(top.login.toLowerCase()) : share >= 0.5)
           ? "lead"
           : "team";
     const hit = awards[r.repo];
