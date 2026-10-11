@@ -1222,7 +1222,7 @@ function ProjectDossier({ p, w, narrow, tight }: { p: Project; w: number; narrow
         ))}
       </text>
       <box style={{ height: gap }} />
-      <LinkLine label="GitHub" href={p.githubUrl} text={p.githubUrl} wrapMode={wm} />
+      {p.githubUrl && <LinkLine label="GitHub" href={p.githubUrl} text={p.githubUrl} wrapMode={wm} />}
       {p.eventUrl && <LinkLine label="Event" href={p.eventUrl} text={p.eventUrl.split("?")[0]} wrapMode={wm} />}
     </box>
   );

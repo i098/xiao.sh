@@ -46,7 +46,7 @@ export function seoBody(projects: Project[]): string {
   <h2>Projects</h2>
   <ul>
     ${projects
-      .map((p) => `<li><a href="${esc(p.githubUrl)}">${esc(p.title)}</a> — ${esc(p.summary)}${esc(projectLabel(p))}</li>`)
+      .map((p) => `<li>${p.githubUrl ? `<a href="${esc(p.githubUrl)}">${esc(p.title)}</a>` : esc(p.title)} — ${esc(p.summary)}${esc(projectLabel(p))}</li>`)
       .join("\n    ")}
   </ul>
   <h2>Elsewhere</h2>
@@ -95,7 +95,7 @@ export function llmsTxt(projects: Project[]) {
     `${profile.name} is a CS student and builder. This site is a terminal UI that runs in the browser. Ask its built-in AI about projects, hackathon wins, and stack.`,
     "",
     "## Projects",
-    ...projects.map((p) => `- [${p.title}](${p.githubUrl}): ${p.summary}${projectLabel(p)}`),
+    ...projects.map((p) => `- ${p.githubUrl ? `[${p.title}](${p.githubUrl})` : p.title}: ${p.summary}${projectLabel(p)}`),
     "",
     "## Stack",
     `- ${profile.skills.join(", ")}`,

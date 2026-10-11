@@ -89,7 +89,7 @@ async function buildProfileContext() {
   const projectLines = (await getProjects())
     .map((p) => {
       const links = [
-        `GitHub: ${p.githubUrl}`,
+        p.githubUrl ? `GitHub: ${p.githubUrl}` : "",
         p.linkedinUrl ? `LinkedIn: ${p.linkedinUrl}` : "",
         p.eventUrl ? `Event: ${p.eventUrl}` : "",
       ]
