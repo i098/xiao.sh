@@ -43,6 +43,88 @@ const eyeId = 35;
 const MASK_MS = 100; // the occupancy mask re-measures at most this often (it forces layout)
 const TONE_BANDS = 6; // frames one texture pass is spread over
 
+// one opaque sprite (RGBA words) per glyph/colour the pond draws, indexed by the ids above
+function makeSprites(w: number, h: number, scale: number): Uint32Array[] {
+  const out: Uint32Array[] = [];
+  const add = (id: number, ch: string, color: string) => {
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    const g = c.getContext("2d", { willReadFrequently: true });
+    if (!g) return;
+    g.fillStyle = POND_BG_HEX; // opaque: blitting a sprite over a cell replaces it
+    g.fillRect(0, 0, w, h);
+    g.scale(scale, scale);
+    g.font = FONT;
+    g.fillStyle = tone(color);
+    g.textBaseline = "alphabetic";
+    const fm = g.measureText("M");
+    const asc = fm.fontBoundingBoxAscent ?? FONT_SIZE * 0.8;
+    const desc = fm.fontBoundingBoxDescent ?? FONT_SIZE * 0.2;
+    g.fillText(ch, 0, (LINE_H - (asc + desc)) / 2 + asc); // centred in the line box like DOM text
+    out[id] = new Uint32Array(g.getImageData(0, 0, w, h).data.buffer);
+  };
+  TEX_CH.forEach((ch, t) => add(texId + t, ch, TEX_HEX[3 - t])); // hiring indexes its shades by light level
+  for (let b = 1; b < WATER_CH.length; b += 1) {
+    add(crestId + b, WATER_CH[b], WATER_CREST_HEX[b]);
+    add(troughId + b, WATER_CH[b], WATER_TROUGH_HEX[b]);
+  }
+  for (let p = 1; p < PAL_HEX.length; p += 1) {
+    if (p === C_EYE) continue;
+    add(fullId + p, FULL_CH, PAL_HEX[p]);
+    add(halfId + p, HALF_CH, PAL_HEX[p]);
+  }
+  add(eyeId, EYE_CH, PAL_HEX[C_EYE]);
+  add(0, " ", POND_BG_HEX); // blank cell
+  return out;
+}
+
+// sprite id for a cell's koi pixels (top/bottom half-block palette indices) or water height
+// `v`; 0 when it is calm open water
+function pondSprite(top: number, bot: number, v: number): number {
+  if (top || bot) {
+    const idx = top || bot;
+    return idx === C_EYE ? eyeId : (top && bot ? fullId : halfId) + idx;
+  }
+  const bkt = waterBucket(v < 0 ? -v : v);
+  return bkt ? (v > 0 ? crestId : troughId) + bkt : 0;
+}
+
+function blit(dst: Uint32Array, dstW: number, spr: Uint32Array, sprW: number, x: number, y: number, w: number, h: number): void {
+  for (let r = 0, s = 0, d = y * dstW + x; r < h; r += 1, s += sprW, d += dstW) for (let c = 0; c < w; c += 1) dst[d + c] = spr[s + c];
+}
+
+// The water texture's tone per cell. It drifts a full turn per minute (its fastest feature moves
+// ~1 cell a second), so a refresh every 100ms looks identical to every frame, and so does one
+// every cells/250 ms on a big grid (205ms at 4K); under reduced motion it is one still frame. A
+// pass over a 4K grid costs ~10ms, so it is spread over TONE_BANDS frames (one phase per pass,
+// so no seams) instead of one long frame ten times a second.
+class WaterTexture {
+  tones = new Uint8Array(0);
+  private at = -1; // when the current (or last) pass began
+  private row = 0; // next row of the pass in progress
+  private phase = 0;
+  private first = true;
+  constructor(private reduced: boolean) {}
+  advance(now: number, cols: number, rows: number, rowU: number): void {
+    if (this.tones.length !== cols * rows) {
+      this.tones = new Uint8Array(cols * rows);
+      this.row = rows;
+      this.at = -1;
+    }
+    if (this.row >= rows && (this.at < 0 || (!this.reduced && now - this.at >= Math.max(100, (cols * rows) / 250)))) {
+      this.row = 0;
+      this.phase = texturePhase(now, this.reduced);
+      this.first = this.at < 0;
+      this.at = now;
+    }
+    if (this.row >= rows) return;
+    const to = this.first ? rows : Math.min(rows, this.row + Math.ceil(rows / TONE_BANDS)); // the first pass is not spread: the texture should not fade in
+    fillTones(this.tones, cols, rows, rowU, this.phase, this.row, to);
+    this.row = to;
+  }
+}
+
 export function startPond(app: HTMLElement): void {
   // ONE canvas of glyph sprites, not a span per cell: at 4K the grid is ~50k cells, and a DOM
   // node each made every frame (and the browser's style/layout/paint) scale with pixel count.
@@ -168,39 +250,8 @@ export function startPond(app: HTMLElement): void {
     layer.style.width = `${cols * cellW}px`;
     layer.style.height = `${rows * LINE_H}px`;
     shown = new Uint16Array(cols * rows); // id 0 = blank, which the fill below paints
-    sprites = [];
     spriteW = Math.ceil(cellW * scale) + 1;
-    const spriteH = Math.ceil(LINE_H * scale) + 1;
-    const add = (id: number, ch: string, color: string) => {
-      const c = document.createElement("canvas");
-      c.width = spriteW;
-      c.height = spriteH;
-      const g = c.getContext("2d", { willReadFrequently: true });
-      if (!g) return;
-      g.fillStyle = POND_BG_HEX; // opaque sprites: blitting one over a cell replaces it
-      g.fillRect(0, 0, spriteW, spriteH);
-      g.scale(scale, scale);
-      g.font = FONT;
-      g.fillStyle = tone(color);
-      g.textBaseline = "alphabetic";
-      const fm = g.measureText("M");
-      const asc = fm.fontBoundingBoxAscent ?? FONT_SIZE * 0.8;
-      const desc = fm.fontBoundingBoxDescent ?? FONT_SIZE * 0.2;
-      g.fillText(ch, 0, (LINE_H - (asc + desc)) / 2 + asc); // centred in the line box like DOM text
-      sprites[id] = new Uint32Array(g.getImageData(0, 0, spriteW, spriteH).data.buffer);
-    };
-    for (let t = 0; t < TEX_CH.length; t += 1) add(texId + t, TEX_CH[t], TEX_HEX[3 - t]); // hiring indexes its shades by light level
-    for (let b = 1; b < WATER_CH.length; b += 1) {
-      add(crestId + b, WATER_CH[b], WATER_CREST_HEX[b]);
-      add(troughId + b, WATER_CH[b], WATER_TROUGH_HEX[b]);
-    }
-    for (let p = 1; p < PAL_HEX.length; p += 1) {
-      if (p === C_EYE) continue;
-      add(fullId + p, FULL_CH, PAL_HEX[p]);
-      add(halfId + p, HALF_CH, PAL_HEX[p]);
-    }
-    add(eyeId, EYE_CH, PAL_HEX[C_EYE]);
-    add(0, " ", POND_BG_HEX); // blank cell
+    sprites = makeSprites(spriteW, Math.ceil(LINE_H * scale) + 1, scale);
     canvasW = layer.width;
     img = ctx.createImageData(canvasW, layer.height);
     pixels = new Uint32Array(img.data.buffer);
@@ -237,90 +288,46 @@ export function startPond(app: HTMLElement): void {
 
   // rAF loop — pauses automatically in background tabs; PondSim clamps deltaMs at 100ms
   let last = performance.now();
-  let frames = 0;
-  let tones = new Uint8Array(0);
-  let tonesAt = -1; // when the current (or last) texture pass began
-  let passRow = 0;
-  let passPhase = 0;
-  let passFirst = true;
-  const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  const texture = new WaterTexture(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
   function frame(now: number) {
     sim.step(now - last);
     last = now;
-    // re-measure occupancy at frame start (layout is clean before our span writes);
+    // re-measure occupancy at frame start (layout is clean before we paint);
     // the once-a-second fallback catches geometry drift no mutation reports (zoom, DPR)
-    if (maskDirty && now - maskAt >= MASK_MS) {
+    if ((maskDirty && now - maskAt >= MASK_MS) || now - maskAt >= 1000) {
       rebuildMask();
       maskDirty = false;
-      maskAt = now;
-    } else if (now - maskAt >= 1000) {
-      rebuildMask();
       maskAt = now;
     }
     const buf = sim.px;
     const field = sim.field;
     const PW = sim.PW;
     const W = sim.W;
-    const drawCols = Math.min(cols, sim.W);
+    const drawCols = Math.min(cols, W);
     const drawRows = Math.min(rows, sim.H);
-    // The texture drifts a full turn per minute (its fastest feature moves ~1 cell a second), so
-    // a refresh every 100ms looks identical to every frame, and so does one every cells/250 ms
-    // on a big grid (205ms at 4K); under reduced motion it is one still frame. A pass over a 4K grid costs
-    // ~10ms, so it is spread over TONE_BANDS frames (one phase per pass, so no seams) instead
-    // of one long frame ten times a second.
-    if (tones.length !== cols * rows) {
-      tones = new Uint8Array(cols * rows);
-      passRow = rows;
-      tonesAt = -1;
-    }
-    if (passRow >= rows && (tonesAt < 0 || (!reduced && now - tonesAt >= Math.max(100, (cols * rows) / 250)))) {
-      passRow = 0;
-      passPhase = texturePhase(now, reduced);
-      passFirst = tonesAt < 0;
-      tonesAt = now;
-    }
-    if (passRow < rows) {
-      const to = passFirst ? rows : Math.min(rows, passRow + Math.ceil(rows / TONE_BANDS)); // the first pass is not spread: the texture should not fade in
-      const m = getMetrics();
-      fillTones(tones, cols, rows, m.lh / m.cw, passPhase, passRow, to);
-      passRow = to;
-    }
     const m = getMetrics();
+    texture.advance(now, cols, rows, m.lh / m.cw);
     if (m.cw !== cellW || scale !== pickScale()) layout(); // late font load or zoom changed the cell
     const cwPx = cellW * scale;
     const lhPx = LINE_H * scale;
     for (let y = 0; y < drawRows; y += 1) {
       const top0 = 2 * y * PW;
-      const bot0 = top0 + PW;
       const rowOff = y * cols;
       const py0 = Math.round(y * lhPx);
       const ph = Math.round((y + 1) * lhPx) - py0;
+      const calm = y >= CHROME_ROWS && y < drawRows - CHROME_ROWS; // calm water shows the texture, except in the header and footer rows
       let dirtyMin = Infinity;
       let dirtyMax = 0;
       for (let x = 0; x < drawCols; x += 1) {
         const i = rowOff + x;
-        let id = 0; // 0 = blank cell
         // a cell owned by app content holds no pond glyph: a terminal cell holds only one
-        if (!mask[i]) {
-          const top = buf[top0 + x];
-          const bot = buf[bot0 + x];
-          if (top || bot) {
-            const idx = top || bot;
-            id = idx === C_EYE ? eyeId : (top && bot ? fullId : halfId) + idx;
-          } else {
-            const v = field[y * W + x];
-            const bkt = waterBucket(v < 0 ? -v : v);
-            if (bkt) id = (v > 0 ? crestId : troughId) + bkt;
-            // calm water shows the texture, except in the header and footer rows
-            else if (y >= CHROME_ROWS && y < drawRows - CHROME_ROWS) id = texId + tones[i];
-          }
-        }
+        let id = mask[i] ? 0 : pondSprite(buf[top0 + x], buf[top0 + PW + x], field[y * W + x]);
+        if (id === 0 && calm && !mask[i]) id = texId + texture.tones[i];
         if (shown[i] === id) continue;
         shown[i] = id;
         const px0 = Math.round(x * cwPx);
         const pw = Math.round((x + 1) * cwPx) - px0;
-        const spr = sprites[id];
-        for (let r = 0, s = 0, d = py0 * canvasW + px0; r < ph; r += 1, s += spriteW, d += canvasW) for (let c = 0; c < pw; c += 1) pixels[d + c] = spr[s + c];
+        blit(pixels, canvasW, sprites[id], spriteW, px0, py0, pw, ph);
         if (px0 < dirtyMin) dirtyMin = px0;
         if (px0 + pw > dirtyMax) dirtyMax = px0 + pw;
       }

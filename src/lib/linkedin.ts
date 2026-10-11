@@ -1,7 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { profile } from "@/lib/profile";
-import { projects } from "@/lib/projects";
 // Bundled copy of the snapshot: the Worker has no disk, and the Bun server falls back to it
 // when the file read fails. The live file read still wins so the dev sync refreshes in place.
 import bundledSnapshot from "@/data/linkedin-about.json";
@@ -201,10 +200,7 @@ function fallbackSnapshot(): LinkedInSnapshot {
       narrative: [],
     },
     sections: [],
-    posts: projects
-      .map((project) => project.linkedinUrl)
-      .filter((url): url is string => Boolean(url))
-      .map((url) => ({ url })),
+    posts: [], // lib/projects imports this module for award matching, so it cannot be read here
     pulledAt: new Date().toISOString(),
     source: "fallback",
   };
