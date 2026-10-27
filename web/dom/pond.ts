@@ -1,4 +1,4 @@
-// Koi pond for the DOM app: same PondSim as the server TUI, painted as glyphs on the same
+// Koi pond for the DOM app: the same ascii-koi KoiSim as the server TUI, painted as glyphs on the same
 // cell grid as the app (same font and line boxes) into ONE canvas behind #root. Text rows paint
 // their opaque PANEL strips over it exactly like the TUI's cell buffers, so koi and ripples
 // flow through every gap the content leaves, in one medium. A cell is a pre-rendered glyph
@@ -6,21 +6,8 @@
 // moved, not the pixel count (the first version was a DOM span per cell: 50k nodes at 4K).
 // Cell metrics come from metrics.ts, so this grid and the DOM text grid are identical by
 // construction. (web/pond.ts still serves the legacy xterm page until cutover.)
-import {
-  PondSim,
-  PAL_HEX,
-  WATER_CP,
-  WATER_CREST_HEX,
-  WATER_TROUGH_HEX,
-  CP_FULL,
-  CP_HALF,
-  CP_EYE,
-  C_EYE,
-  waterBucket,
-  POND_BG_HEX,
-  MOVE_AMP,
-  DOWN_AMP,
-} from "../../src/lib/pond";
+import { KoiSim, PAL_HEX, CP_FULL, CP_HALF, CP_EYE, C_EYE } from "ascii-koi";
+import { WATER_CP, WATER_CREST_HEX, WATER_TROUGH_HEX, waterBucket, POND_BG_HEX, MOVE_AMP, DOWN_AMP } from "ascii-pond";
 import { tone } from "./tone";
 import { FONT, FONT_SIZE, LINE_H, getMetrics, onMetrics } from "./metrics";
 import { COPY_GAP, COPY_PAD, TEX_CH, TEX_HEX, fillTones, texturePhase } from "../../src/lib/texture";
@@ -146,7 +133,7 @@ export function startPond(app: HTMLElement): void {
   let pixels = new Uint32Array(img.data.buffer);
   let canvasW = 1;
   let { cols, rows } = getMetrics();
-  let sim = new PondSim(cols, rows, cols < 64 ? 0.5 : 1);
+  let sim = new KoiSim(cols, rows, cols < 64 ? 0.5 : 1);
   // which sprite each cell shows right now, so a frame only draws cells that changed
   let shown = new Uint16Array(0);
   // cell-exclusivity mask: a terminal cell holds ONE glyph, so cells occupied by app
@@ -236,7 +223,7 @@ export function startPond(app: HTMLElement): void {
     const m = getMetrics();
     cols = m.cols;
     rows = m.rows;
-    sim = new PondSim(cols, rows, cols < 64 ? 0.5 : 1);
+    sim = new KoiSim(cols, rows, cols < 64 ? 0.5 : 1);
     mask = new Uint8Array(cols * rows);
     maskDirty = true;
     layout();
@@ -286,7 +273,7 @@ export function startPond(app: HTMLElement): void {
     sim.mouse = null;
   });
 
-  // rAF loop — pauses automatically in background tabs; PondSim clamps deltaMs at 100ms
+  // rAF loop — pauses automatically in background tabs; the pond clamps deltaMs at 100ms
   let last = performance.now();
   const texture = new WaterTexture(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
   function frame(now: number) {

@@ -16,22 +16,8 @@ import { autoName, deleteSession, listSessions, loadSession, saveSession, type S
 import { liveCount } from "@/lib/presence";
 import { getGitHub, type GitHubPulse } from "@/lib/github";
 import { recordQuestion } from "@/lib/questions";
-import {
-  PondSim,
-  PAL_HEX,
-  POND_BG_HEX,
-  WATER_CP,
-  WATER_CREST_HEX,
-  WATER_TROUGH_HEX,
-  CP_FULL,
-  CP_HALF,
-  CP_EYE,
-  C_EYE,
-  waterBucket,
-  MOVE_AMP,
-  DOWN_AMP,
-  SPLASH_CAP,
-} from "@/lib/pond";
+import { KoiSim, PAL_HEX, CP_FULL, CP_HALF, CP_EYE, C_EYE } from "ascii-koi";
+import { POND_BG_HEX, WATER_CP, WATER_CREST_HEX, WATER_TROUGH_HEX, waterBucket, MOVE_AMP, DOWN_AMP, SPLASH_CAP } from "ascii-pond";
 import { ACCENT, BARS, ERR, FAINT, HAIRLINE, INK, MUTED, PANEL, SEL_BG, SEP, Stat, commas, compactNum, timeAgo, truncate } from "./ui";
 import { NowPlaying, VolumeBar, type VolumeChannel } from "./music";
 
@@ -657,8 +643,8 @@ function Footer({
   );
 }
 
-// The pond simulation lives in @/lib/pond (shared with the browser canvas renderer in
-// web/pond.ts). Server-side it paints straight into the renderer's cell buffers (raw
+// The pond simulation is the ascii-koi package (also behind the browser canvas renderer in
+// web/dom/pond.ts). Server-side it paints straight into the renderer's cell buffers (raw
 // typed-array views over native memory — zero FFI, zero React reconciliation per frame).
 // All colors are precomputed once as the 4×u16 RGBA quads the native buffer stores.
 const u16 = (hex: string) => RGBA.fromHex(hex).buffer;
@@ -700,9 +686,9 @@ export function KoiPond({
   const H = Math.max(6, height);
   // shared sim (same code drives the browser canvas); recreated on resize — koi
   // re-enter from the edges, which reads as the intentional swim-in intro
-  const simRef = useRef<PondSim | null>(null);
+  const simRef = useRef<KoiSim | null>(null);
   if (!simRef.current || simRef.current.W !== W || simRef.current.H !== H || simRef.current.scale !== scale) {
-    simRef.current = new PondSim(W, H, scale);
+    simRef.current = new KoiSim(W, H, scale);
   }
   const tonesRef = useRef(new Uint8Array(0));
   const texClock = useRef({ now: 0, drawn: 0 });

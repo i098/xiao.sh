@@ -14,6 +14,7 @@ The public site runs on Cloudflare Workers, which carry HTTP only, so it is brow
   The SSH server renders the app with OpenTUI and streams it; the web page ships the same tree compiled to DOM elements and renders it locally, so keystrokes are handled with zero round-trips.
 - An animated koi pond behind every screen.
   Koi swim in from the edges, flee the cursor, and leave wave-sim ripples over a slowly drifting water texture (a cellular web of light, carried over from the Subliminal Labs hiring page; `src/lib/texture.ts`), which keeps clear of the header, the footer, and every line of copy.
+  The koi and the water are the [ascii-koi](https://github.com/i098/ascii-koi) and [ascii-pond](https://github.com/i098/ascii-pond) npm packages, which any site can add.
   Over SSH it is drawn server-side straight into the renderer's cell buffers each frame; in the browser it runs client-side on the same text grid, so ripples react instantly and nothing is streamed for it.
 - A Projects screen that labels itself: every public repo of the author and his hackathon team org is pulled from GitHub, and title, summary, category, stack, award, status and role are derived by rule (`src/lib/project-labels.ts`), with wins matched from LinkedIn honours.
   A daily cron re-derives the labels on Cloudflare, so new repos and their GitHub-derived labels appear with no redeploy; awards come from the LinkedIn snapshot, so they update once that snapshot is synced, the Worker is redeployed and the next daily refresh has run (see [Cloudflare](#cloudflare)).
@@ -104,7 +105,7 @@ On Cloudflare the same keys live in the `DATA` KV namespace (see [Cloudflare](#c
   `index.ts` runs both surfaces plus the LinkedIn refresh loop; `routes.ts` holds the HTML shell, `/api/*` data routes, and SEO routes shared by both web hosts; `web.ts` is the Bun HTTP server; `worker.ts` is the Cloudflare Worker; `bundle.ts` builds the browser bundle; `ssh.ts` is the ssh2 server (session caps, reaping); `seo.ts` builds the meta, JSON-LD, and text files.
 - `web/` - the browser build seams.
   `main.ts` boots the DOM render; `dom/` holds the JSX-runtime and OpenTUI shims, cell metrics, the client-side pond, the volume channel, and fetch-based twins of the data libs.
-- `src/lib/` - shared data and logic used by both surfaces: `profile`, `projects`, `project-labels`, `linkedin`, `ai`, `spotify`, `github`, `preview`, `visits`, `presence`, `analytics`, `sessions`, `questions`, `store`, `pond`, `texture`, `symbols`.
+- `src/lib/` - shared data and logic used by both surfaces: `profile`, `projects`, `project-labels`, `linkedin`, `ai`, `spotify`, `github`, `preview`, `visits`, `presence`, `analytics`, `sessions`, `questions`, `store`, `texture`, `symbols`.
 - `src/data/` - the baked-in LinkedIn snapshot (`linkedin-about.json`), the derived project snapshot (`projects.json`), and the only hand-typed project data (`project-overrides.ts`).
 - `scripts/` - the LinkedIn sync/session/asset scripts, the project-label sync, the Spotify auth helper, and `data-to-kv.sh` (copies a `.data` directory into KV).
 - `wrangler.jsonc` - the Cloudflare Worker deploy; `fly/`, `k8s/`, and `Dockerfile` - the older self-hosted setup.
