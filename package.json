@@ -30,6 +30,8 @@
   "dependencies": {
     "@opentui/core": "^0.4.2",
     "@opentui/react": "^0.4.2",
+    "ascii-koi": "^0.1.1",
+    "ascii-pond": "^0.1.1",
     "posthog-node": "^5.39.0",
     "react": "19.2.7",
     "react-dom": "^19.2.7",
